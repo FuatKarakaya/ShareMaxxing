@@ -2,26 +2,26 @@
 
 ## 1\. Project Purpose and Objectives
 
-İTÜ ShareMaxxing is a web and mobile platform where İTÜ students help each other, open only to verified @itu.edu.tr accounts. Its core is intercity ride sharing to and from İstanbul: drivers post the cities they will pass through and their free seats, passengers search by start and end city, and drivers share their travel costs with passengers through in-app payment. An anonymous "askıda bilet" pool lets the community fund seats for students in financial need. The same accounts and reputation also serve a roommate and housing finder and a student forum.
+İTÜ ShareMaxxing is a web platform where İTÜ students help each other, open only to verified @itu.edu.tr accounts. Its core is intercity ride sharing to and from İstanbul: drivers post the cities they will pass through and their free seats, passengers search by start and end city, and drivers share their travel costs with passengers through in-app payment. An anonymous "askıda bilet" pool lets the community fund seats for students in financial need. The same accounts and reputation also serve a roommate and housing finder and a student forum.
 
 ### Objectives
 * Provide a trusted ride-sharing platform limited to verified İTÜ students  
 * Help students share travel costs fairly, keeping rides as cost sharing rather than a commercial service
 * Let the community anonymously fund seats for students in financial need  
 * Bring housing search and student questions into the same trusted platform  
-* Deliver working web and mobile applications on one cloud-hosted backend
+* Deliver a working, responsive web application on one cloud-hosted backend
 
 
 ## 2. Stakeholders & Roles
 * **Product Owner:** Mehmet Fuat Karakaya
 * **Software Engineering Team:**
-    * Mehmet Fuat Karakaya : Product Owner & Backend Developer (Rides, Search, booking)
-    * Ege Demir : Configuration Manager & DevOps, Authentication, Forum/Housing and AI Integration
-    * Alperen Akbaş : Quality Assurance (QA) Manager & Backend Developer (Payments, Askıda Bilet)
-    * Bünyamin Kalaycı : Project Manager (GitHub Projects) & Web Frontend Developer
-    * Egemen Çevik : UI/UX Coordinator & Mobile App Developer
+    * Mehmet Fuat Karakaya : Product Owner & Full-Stack Developer (Forum, Housing, Shared Web UI)
+    * Ege Demir : Configuration Manager & Full-Stack Developer (Ride Posting & Search, Cost Sharing, Notifications)
+    * Alperen Akbaş : Quality Assurance (QA) Manager & Full-Stack Developer (Payments, Askıda Bilet, CI Pipeline)
+    * Bünyamin İbrahim Kalaycı : Project Manager (GitHub Projects) & Full-Stack Developer (Booking & Waitlist, AI Features, Cloud Deployment)
+    * Egemen Çevik : UI/UX Coordinator & Full-Stack Developer (Trust & Safety, Admin Panel, Authentication)
 
-* **GH Repo/Project URL:** 
+* **GH Repo/Project URL:** https://github.com/FuatKarakaya/ShareMaxxing
 ## 3\. Project Scope
 
 ### Project domain
@@ -39,10 +39,10 @@ Education, in the area of student community services. The hypothetical customer 
 * Trust and safety: ride history, two-way ratings revealed only after both sides submit, no-show records, user reports and a moderation queue  
 * Housing and roommates: "I have a room" and "I need a room" listings, contact details revealed only on mutual acceptance, listings are tagged with an İstanbul district
 * Forum: questions and answers with category filters (course-related, general, yemekhane, housing, transport, campus life), course code tags, votes, search  
-* Notifications: email and mobile push for bookings, payments, and replies  
+* Notifications: email and in-app notifications for bookings, payments, and replies  
 * AI assistance: AI-supported search in the forum and AI-supported flagging of unsuitable content for moderator review  
 * Admin panel: moderation queue and report handling (moderators and admins), plus user management, donation pool overview and usage statistics (admins only). 
-* Web application and mobile application on one backend API, deployed to the cloud with an automated build and test pipeline
+* A responsive web application with a backend API, deployed to the cloud with an automated build and test pipeline
 
 ### Out-of-Scope
 
@@ -55,7 +55,8 @@ Education, in the area of student community services. The hypothetical customer 
 * Integration with İTÜ's own login and student information systems  
 * Rent payments, deposits and rental contracts  
 * Verification of financial need through official documents  
-* Support for other universities
+* Support for other universities  
+* A native mobile app (students use the responsive web app in their phone's browser)
 
 ## 4. Technology Stack
 
@@ -65,13 +66,13 @@ Education, in the area of student community services. The hypothetical customer 
 * PostgreSQL with Prisma ORM  
 * JWT-based authentication with role-based authorization  
 * iyzico payment API in sandbox mode  
+* Nodemailer for verification codes and email notifications  
 * Jest and Supertest with GitHub Actions (test-first development and CI)  
 * {*Cloud provider from the course link*}
 
 ### Frontend Stack
 
-* React (TypeScript) with Vite and Tailwind CSS for the web app and admin panel  
-* React Native with Expo for the mobile app, including push notifications
+* React (TypeScript) with Vite and Tailwind CSS for a responsive web app (works in phone browsers) and the admin panel
 
 ### AI Stack
 
@@ -89,4 +90,3 @@ Education, in the area of student community services. The hypothetical customer 
 | Codebase | 25.12.2026 23:59 |
 | Demo | 26.12.2026 23:59 |
 | Presentation | 28.12.2026 23:59 |
-
