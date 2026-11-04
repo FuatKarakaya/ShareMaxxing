@@ -9,7 +9,7 @@ A web and mobile platform where verified İTÜ students share intercity rides to
 | Mehmet Fuat Karakaya | Backend Developer (Rides, Search, Booking) | Product Owner |
 | Ege Demir | DevOps, Authentication, Forum/Housing and AI Integration | Configuration Manager |
 | Alperen Akbaş | Backend Developer (Payments, Askıda Bilet) | Quality Assurance (QA) Manager |
-| Bünyamin Kalaycı | Web Frontend Developer | Project Manager (GitHub Projects) |
+| Bünyamin İbrahim Kalaycı | Web Frontend Developer | Project Manager (GitHub Projects) |
 | Egemen Çevik | Mobile App Developer | UI/UX Coordinator |
 
 ## Repository Structure
