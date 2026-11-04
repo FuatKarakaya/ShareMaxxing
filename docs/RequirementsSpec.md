@@ -19,7 +19,7 @@
 
 İTÜ ShareMaxxing is a web platform for İTÜ students with verified @itu.edu.tr accounts. Its main feature is intercity ride sharing to and from İstanbul. Drivers post trips, passengers search and book seats, and passengers pay their share of the travel costs in the app. Students in financial need can ask for an "askıda bilet" (a seat paid by an anonymous donor). The same accounts are also used for room and roommate listings and for a student forum. Moderators and admins keep the platform safe.
 
-This document lists the requirements of the system described in our Project Plan (v1.1). Each functional requirement is linked to a task (`T-##`) and a deliverable (`D-##`) of the Plan.
+This document lists the requirements of the system described in our Project Plan (v1.2). Each functional requirement is linked to a task (`T-##`) and a deliverable (`D-##`) of the Plan.
 
 Section 2 lists the functional and non-functional requirements. Section 3 describes the users, gives short scenarios and user stories, shows the use case diagrams and explains each use case step by step. Requirements marked *(optional)* belong to the optional scope of the Plan and are built only if time allows.
 
@@ -91,7 +91,7 @@ Tasks T-27 to T-33 (database, CI pipeline, cloud deployment, reports, documentat
 | NFR-07 | Privacy | Askıda bilet donors and recipients stay anonymous to each other and to drivers. Contact details appear only when the poster adds them and only to verified students. Only the personal data the features need is collected. | FR-10, FR-21 – FR-24, FR-30 | Automated tests check that hidden fields never appear in API responses. |
 | NFR-08 | Maintainability | All code is in TypeScript, reviewed before merging, and tested automatically on every push. A pull request with a failing test cannot be merged. | Whole system | CI results on GitHub; review records on pull requests. |
 | NFR-09 | Deployment | The site runs on a cloud provider at a public URL, and every merge to the main branch is deployed automatically. | Whole system | The live site is reachable; a merged change appears on it. |
-| NFR-10 | AI reliability | AI flags only advise moderators; only a moderator or admin can hide content or punish a user. If the AI service fails, the content is kept and sent for human review. AI flagging reaches at least 80% precision and 80% recall on at least 50 labelled Turkish posts and listings (at least 25 unsuitable and 25 suitable, not used for prompt tuning). | FR-40, FR-41 | Evaluation on the labelled set; tests that simulate AI errors. |
+| NFR-10 | AI reliability | AI flags only advise moderators; only a moderator or admin can hide content or punish a user. If the AI service fails, the content is kept and sent for human review. | FR-40, FR-41 | Tests that AI flags alone cannot hide content; tests that simulate AI errors. |
 | NFR-11 | AI reliability | *(optional)* If AI forum search is built, each result links to an existing post, and a "no result" message with keyword search is shown when nothing related is found. | FR-37 | Tests with sample questions. |
 
 **Non-functional requirement notes / assumptions:**  
