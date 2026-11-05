@@ -15,4 +15,8 @@ A web and mobile platform where verified İTÜ students share intercity rides to
 ## Repository Structure
 
 * `docs/` – project documents
-* `tests/` – all tests
+* `sharemaxxing/backend/tests/` – backend tests
+* `sharemaxxing/backend/` – Express + Prisma API
+
+Backend setup and the sign-up/login API contract are documented in
+[AuthBackend.md](docs/AuthBackend.md).
