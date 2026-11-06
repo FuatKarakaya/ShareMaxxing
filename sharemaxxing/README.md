@@ -14,6 +14,7 @@ A web and mobile platform where verified İTÜ students share intercity rides to
 
 ## Local Prisma setup
 
+<<<<<<< HEAD
 From `backend/`, install dependencies, configure the local PostgreSQL connection, start PostgreSQL, generate the client, and apply migrations:
 
 ```bash
@@ -41,3 +42,7 @@ This runs `backend/prisma/seed-mock.ts`, is safe to re-run, and refuses to run i
 - `backend/prisma/` — schema, migrations, and demo/mock seed scripts.
 - `docs/` — project documents.
 - `tests/` — shared tests.
+=======
+* `docs/` – project documents
+* `backend/tests/` – backend tests
+>>>>>>> main
