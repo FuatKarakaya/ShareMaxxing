@@ -66,7 +66,7 @@ CREATE TABLE "users" (
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "users_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "users_pkey" PRIMARY KEY ("id"),
     CONSTRAINT "users_email_lowercase" CHECK ("email" = lower("email")),
     CONSTRAINT "users_email_itu" CHECK ("email" ~ '^[a-z0-9._%+-]+@itu[.]edu[.]tr$'),
     CONSTRAINT "users_display_name_nonempty" CHECK (length(trim("display_name")) > 0)

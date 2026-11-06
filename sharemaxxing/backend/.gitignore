@@ -1,9 +1,5 @@
 node_modules/
 dist/
-<<<<<<< HEAD
-.env
-=======
 .env
 .env.*
 !.env.example
->>>>>>> main
