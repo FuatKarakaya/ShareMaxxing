@@ -15,4 +15,4 @@ A web and mobile platform where verified İTÜ students share intercity rides to
 ## Repository Structure
 
 * `docs/` – project documents
-* `tests/` – all tests
+* `backend/tests/` – backend tests
