@@ -1,4 +1,4 @@
-{
+    {
   "name": "sharemaxxing-backend",
   "version": "1.0.0",
   "private": true,
@@ -8,16 +8,19 @@
     "start": "node dist/server.js",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:deploy": "prisma migrate deploy",
+    "db:reset": "prisma migrate reset",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:seed:mock": "tsx prisma/seed-mock.ts"
   },
   "dependencies": {
-    "@prisma/client": "^6.0.0",
+    "@prisma/client": "6.19.3",
     "express": "^4.21.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^22.0.0",
-    "prisma": "^6.0.0",
+    "prisma": "6.19.3",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   },

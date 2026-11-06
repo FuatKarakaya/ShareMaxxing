@@ -1,0 +1,19 @@
+# Local PostgreSQL for development. The plan pins PostgreSQL 14+; the team develops on 16.
+#   docker compose up -d        start
+#   docker compose down -v      stop and wipe the data
+# The user is a superuser, which `prisma migrate dev` needs to create its temporary shadow database.
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sharemaxxing
+      POSTGRES_PASSWORD: sharemaxxing
+      POSTGRES_DB: sharemaxxing
+    ports:
+      - "5432:5432"
+    volumes:
+      - sharemaxxing-pgdata:/var/lib/postgresql/data
+
+volumes:
+  sharemaxxing-pgdata:
