@@ -1,3 +1,19 @@
+// İTÜ ShareMaxxing - Prisma schema
+// Source of truth: docs/databaseplan.md (Database Plan v1.3).
+//
+// Read this before editing:
+//  * Prisma owns the tables, enums, columns, FKs and plain indexes (migration 1).
+//  * Prisma CANNOT express CHECK constraints, partial/expression indexes, the
+//    append-only trigger or views. Those live in raw SQL migrations 2 and 3 and are
+//    intentionally NOT declared here. Do not add `@@index` for them, or Prisma will
+//    try to create duplicates.
+//  * Never use `prisma db push` on this project. It would not create (and may
+//    drop) the objects above. Always go through `prisma migrate`.
+//  * Money is BigInt kuruş (25000 = 250.00 TL). BigInt does not survive
+//    JSON.stringify, so send it to clients as a decimal string.
+//  * Enums are native PostgreSQL enum types. In raw SQL, cast bound parameters,
+//    e.g. `SET resolution = $3::moderation_resolution`.
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,16 +23,149 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─────────────────────────────── Enums ───────────────────────────────
+
 enum UserRole {
   USER
   MODERATOR
   ADMIN
+
+  @@map("user_role")
 }
 
 enum UserStatus {
   ACTIVE
   SUSPENDED
+
+  @@map("user_status")
 }
+
+enum TripStatus {
+  PUBLISHED
+  COMPLETED
+  CANCELLED
+
+  @@map("trip_status")
+}
+
+enum BookingStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  EXPIRED
+
+  @@map("booking_status")
+}
+
+enum SponsorshipStatus {
+  OPEN
+  FUNDING
+  FUNDED
+  CANCELLED
+  EXPIRED
+
+  @@map("sponsorship_status")
+}
+
+enum PaymentProvider {
+  IYZICO_SANDBOX
+
+  @@map("payment_provider")
+}
+
+enum PaymentStatus {
+  CREATED
+  PENDING
+  HELD
+  RELEASED
+  REFUNDED
+  FAILED
+
+  @@map("payment_status")
+}
+
+enum LedgerEventType {
+  PAYMENT
+  HOLD
+  RELEASE
+  REFUND
+
+  @@map("ledger_event_type")
+}
+
+enum RatingDirection {
+  DRIVER_TO_PASSENGER
+  PASSENGER_TO_DRIVER
+
+  @@map("rating_direction")
+}
+
+enum MissingParty {
+  DRIVER
+  PASSENGER
+
+  @@map("missing_party")
+}
+
+enum HousingListingType {
+  HAVE_ROOM
+  NEED_ROOM
+
+  @@map("housing_listing_type")
+}
+
+enum HousingStatus {
+  ACTIVE
+  CLOSED
+
+  @@map("housing_status")
+}
+
+enum PostKind {
+  QUESTION
+  ANSWER
+
+  @@map("post_kind")
+}
+
+enum NotificationKind {
+  BOOKING
+  CANCELLATION
+  RIDE_REMINDER
+  PAYMENT
+  FUNDING
+  FORUM_REPLY
+  MODERATION
+
+  @@map("notification_kind")
+}
+
+enum ModerationSource {
+  USER
+  AI
+
+  @@map("moderation_source")
+}
+
+enum ModerationStatus {
+  ACTIVE
+  SOLVED
+
+  @@map("moderation_status")
+}
+
+enum ModerationResolution {
+  DISMISSED
+  CONTENT_HIDDEN
+  CONTENT_DELETED
+  USER_WARNED
+  USER_SUSPENDED
+
+  @@map("moderation_resolution")
+}
+
+// ───────────────────── 4.1 Accounts and location ─────────────────────
 
 model User {
   id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -28,7 +177,331 @@ model User {
   status          UserStatus @default(ACTIVE)
   emailVerifiedAt DateTime?  @map("email_verified_at") @db.Timestamptz(6)
   createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedAt       DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  verificationCode    EmailVerificationCode?
+  submerchant         DriverSubmerchant?
+  trips               Trip[]
+  bookings            Booking[]
+  payments            Payment[]
+  sponsorshipRequests SponsorshipRequest[]
+  housingListings     HousingListing[]
+  forumPosts          ForumPost[]
+  notifications       Notification[]
+  reportsFiled        ModerationCase[]     @relation("CaseReporter")
+  casesAsTarget       ModerationCase[]     @relation("CaseTargetUser")
+  casesReviewed       ModerationCase[]     @relation("CaseReviewer")
 
   @@map("users")
+}
+
+model DriverSubmerchant {
+  userId               String   @id @map("user_id") @db.Uuid
+  iyzicoSubmerchantKey String   @unique @map("iyzico_submerchant_key")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("driver_submerchants")
+}
+
+model EmailVerificationCode {
+  userId         String   @id @map("user_id") @db.Uuid
+  codeHash       String   @map("code_hash")
+  failedAttempts Int      @default(0) @map("failed_attempts") @db.SmallInt
+  expiresAt      DateTime @map("expires_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("email_verification_codes")
+}
+
+// Natural key: Turkish plate code (İstanbul = 34). Seeded by migration 3.
+model City {
+  code Int    @id @db.SmallInt
+  name String @unique @db.VarChar(80)
+
+  originTrips      Trip[] @relation("TripOrigin")
+  destinationTrips Trip[] @relation("TripDestination")
+
+  @@map("cities")
+}
+
+// Seeded by migration 3.
+model IstanbulDistrict {
+  id   String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name String @unique @db.VarChar(80)
+
+  housingListings HousingListing[]
+
+  @@map("istanbul_districts")
+}
+
+// ──────────────────── 4.2 Trips and bookings ────────────────────
+
+model Trip {
+  id                  String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  driverId            String     @map("driver_id") @db.Uuid
+  originCityCode      Int        @map("origin_city_code") @db.SmallInt
+  destinationCityCode Int        @map("destination_city_code") @db.SmallInt
+  departureAt         DateTime   @map("departure_at") @db.Timestamptz(6)
+  seatCapacity        Int        @map("seat_capacity") @db.SmallInt
+  priceMinor          BigInt     @map("price_minor")
+  description         String?
+  contactDetails      String?    @map("contact_details") @db.VarChar(250)
+  status              TripStatus @default(PUBLISHED)
+  driverCompletedAt   DateTime?  @map("driver_completed_at") @db.Timestamptz(6)
+  cancelledAt         DateTime?  @map("cancelled_at") @db.Timestamptz(6)
+  createdAt           DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  driver              User                 @relation(fields: [driverId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  originCity          City                 @relation("TripOrigin", fields: [originCityCode], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  destinationCity     City                 @relation("TripDestination", fields: [destinationCityCode], references: [code], onDelete: NoAction, onUpdate: NoAction)
+  bookings            Booking[]
+  sponsorshipRequests SponsorshipRequest[]
+  moderationCases     ModerationCase[]
+
+  // trips_search_idx is a partial index (WHERE status = 'PUBLISHED'): raw SQL, migration 2.
+  @@index([driverId, departureAt], map: "trips_driver_idx")
+  @@map("trips")
+}
+
+model Booking {
+  id                   String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tripId               String        @map("trip_id") @db.Uuid
+  passengerId          String        @map("passenger_id") @db.Uuid
+  // Set only for funded seats (askıda bilet). Never show such a booking to the driver.
+  sponsorshipRequestId String?       @unique @map("sponsorship_request_id") @db.Uuid
+  priceMinor           BigInt        @map("price_minor")
+  status               BookingStatus @default(PENDING_PAYMENT)
+  reservationExpiresAt DateTime      @map("reservation_expires_at") @db.Timestamptz(6)
+  passengerCompletedAt DateTime?     @map("passenger_completed_at") @db.Timestamptz(6)
+  completedAt          DateTime?     @map("completed_at") @db.Timestamptz(6)
+  cancelledAt          DateTime?     @map("cancelled_at") @db.Timestamptz(6)
+  createdAt            DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  trip               Trip                @relation(fields: [tripId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  passenger          User                @relation(fields: [passengerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  sponsorshipRequest SponsorshipRequest? @relation(fields: [sponsorshipRequestId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  payments           Payment[]
+  ratings            RideRating[]
+  noShowReports      NoShowReport[]
+
+  // one_active_booking_per_passenger (partial unique) and booking_expiry_idx (partial): raw SQL, migration 2.
+  @@index([tripId, status], map: "bookings_trip_status_idx")
+  @@index([passengerId, createdAt(sort: Desc)], map: "bookings_passenger_idx")
+  @@map("bookings")
+}
+
+// ───────────────── 4.3 Funding requests and payments ─────────────────
+
+model SponsorshipRequest {
+  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tripId      String            @map("trip_id") @db.Uuid
+  recipientId String            @map("recipient_id") @db.Uuid
+  amountMinor BigInt            @map("amount_minor")
+  status      SponsorshipStatus @default(OPEN)
+  expiresAt   DateTime          @map("expires_at") @db.Timestamptz(6)
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  trip      Trip     @relation(fields: [tripId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  recipient User     @relation(fields: [recipientId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  booking   Booking?
+
+  // one_live_funding_request (partial unique) and funding_pool_idx (partial): raw SQL, migration 2.
+  @@index([recipientId], map: "funding_recipient_idx")
+  @@map("sponsorship_requests")
+}
+
+model Payment {
+  id                    String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bookingId             String          @map("booking_id") @db.Uuid
+  // Ordinary booking: the passenger. Funded booking: the donor.
+  payerId               String          @map("payer_id") @db.Uuid
+  amountMinor           BigInt          @map("amount_minor")
+  provider              PaymentProvider @default(IYZICO_SANDBOX)
+  providerPaymentId     String?         @unique @map("provider_payment_id")
+  providerTransactionId String?         @unique @map("provider_transaction_id")
+  providerRefundId      String?         @map("provider_refund_id")
+  idempotencyKey        String          @unique @map("idempotency_key") @db.Uuid
+  status                PaymentStatus   @default(CREATED)
+  failureCode           String?         @map("failure_code")
+  heldAt                DateTime?       @map("held_at") @db.Timestamptz(6)
+  releasedAt            DateTime?       @map("released_at") @db.Timestamptz(6)
+  refundedAt            DateTime?       @map("refunded_at") @db.Timestamptz(6)
+  createdAt             DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  booking Booking              @relation(fields: [bookingId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  payer   User                 @relation(fields: [payerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ledger  PaymentLedgerEntry[]
+
+  // one_nonfailed_payment_per_booking (partial unique) and payments_open_idx (partial): raw SQL, migration 2.
+  @@index([payerId, createdAt(sort: Desc)], map: "payments_payer_idx")
+  @@map("payments")
+}
+
+// ─────────────────────────── 4.4 Ledger ───────────────────────────
+// Append-only: a trigger (migration 2) rejects UPDATE and DELETE.
+// Never call updateMany/deleteMany on this model, and never delete it in tests.
+
+model PaymentLedgerEntry {
+  id          String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  paymentId   String          @map("payment_id") @db.Uuid
+  eventType   LedgerEventType @map("event_type")
+  amountMinor BigInt          @map("amount_minor")
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  // one_terminal_ledger_event (partial unique: RELEASE or REFUND, not both): raw SQL, migration 2.
+  @@unique([paymentId, eventType])
+  @@map("payment_ledger")
+}
+
+// ───────────────── 4.5 Ratings and no-shows ─────────────────
+// Reviewer and subject are NOT stored: derive them from trips.driver_id and bookings.passenger_id.
+
+model RideRating {
+  bookingId String          @map("booking_id") @db.Uuid
+  direction RatingDirection
+  score     Int             @db.SmallInt
+  review    String?         @db.VarChar(1000)
+  createdAt DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([bookingId, direction])
+  @@map("ride_ratings")
+}
+
+model NoShowReport {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bookingId    String       @map("booking_id") @db.Uuid
+  missingParty MissingParty @map("missing_party")
+  details      String?      @db.VarChar(1000)
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([bookingId, missingParty])
+  @@map("no_show_reports")
+}
+
+// ──────────────────── 4.6 Housing and forum ────────────────────
+
+model HousingListing {
+  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  authorId       String             @map("author_id") @db.Uuid
+  districtId     String             @map("district_id") @db.Uuid
+  listingType    HousingListingType @map("listing_type")
+  title          String             @db.VarChar(160)
+  description    String
+  contactDetails String?            @map("contact_details") @db.VarChar(250)
+  status         HousingStatus      @default(ACTIVE)
+  hiddenAt       DateTime?          @map("hidden_at") @db.Timestamptz(6)
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  author          User             @relation(fields: [authorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  district        IstanbulDistrict @relation(fields: [districtId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  moderationCases ModerationCase[]
+
+  // housing_browse_idx is partial: raw SQL, migration 2.
+  @@index([authorId], map: "housing_author_idx")
+  @@map("housing_listings")
+}
+
+// Seeded by migration 3.
+model ForumCategory {
+  id      String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code    String @unique @db.VarChar(40)
+  labelTr String @map("label_tr") @db.VarChar(80)
+
+  posts ForumPost[]
+
+  @@map("forum_categories")
+}
+
+// A QUESTION has a category and title and no parent; an ANSWER has a parent question
+// and neither category nor title (enforced by a CHECK in migration 2).
+model ForumPost {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  authorId     String    @map("author_id") @db.Uuid
+  kind         PostKind
+  parentPostId String?   @map("parent_post_id") @db.Uuid
+  categoryId   String?   @map("category_id") @db.Uuid
+  title        String?   @db.VarChar(180)
+  body         String
+  hiddenAt     DateTime? @map("hidden_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  author          User             @relation(fields: [authorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  // Deleting a question deletes its answers.
+  parent          ForumPost?       @relation("PostAnswers", fields: [parentPostId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  answers         ForumPost[]      @relation("PostAnswers")
+  category        ForumCategory?   @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  moderationCases ModerationCase[]
+
+  // forum_browse_idx (partial) and forum_keyword_idx (GIN, expression): raw SQL, migration 2.
+  @@index([parentPostId, createdAt], map: "forum_answers_idx")
+  @@index([authorId], map: "forum_author_idx")
+  @@map("forum_posts")
+}
+
+// ───────────────────── 4.7 Notifications ─────────────────────
+
+model Notification {
+  id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  recipientId String           @map("recipient_id") @db.Uuid
+  kind        NotificationKind
+  // Display-safe text + internal link only. Never donor/recipient identities for funding events.
+  payload     Json             @default("{}") @db.JsonB
+  readAt      DateTime?        @map("read_at") @db.Timestamptz(6)
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  recipient User @relation(fields: [recipientId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  // unread_notifications_idx is partial: raw SQL, migration 2.
+  @@map("notifications")
+}
+
+// ───────────────────── 4.8 Moderation queue ─────────────────────
+// An ACTIVE case targets exactly one of user / trip / housing listing / post (CHECKs in migration 2).
+// Deleting the post or listing sets its target to NULL so SOLVED cases stay as history.
+
+model ModerationCase {
+  id               String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  source           ModerationSource
+  reporterId       String?               @map("reporter_id") @db.Uuid
+  targetUserId     String?               @map("target_user_id") @db.Uuid
+  targetTripId     String?               @map("target_trip_id") @db.Uuid
+  targetHousingId  String?               @map("target_housing_id") @db.Uuid
+  targetPostId     String?               @map("target_post_id") @db.Uuid
+  reason           String
+  aiModel          String?               @map("ai_model")
+  aiScore          Decimal?              @map("ai_score") @db.Decimal(5, 4)
+  aiUnavailable    Boolean               @default(false) @map("ai_unavailable")
+  status           ModerationStatus      @default(ACTIVE)
+  reviewedById     String?               @map("reviewed_by") @db.Uuid
+  resolution       ModerationResolution?
+  resolutionNote   String?               @map("resolution_note")
+  resolvedAt       DateTime?             @map("resolved_at") @db.Timestamptz(6)
+  createdAt        DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  reporter       User?           @relation("CaseReporter", fields: [reporterId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  targetUser     User?           @relation("CaseTargetUser", fields: [targetUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  targetTrip     Trip?           @relation(fields: [targetTripId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  targetHousing  HousingListing? @relation(fields: [targetHousingId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  targetPost     ForumPost?      @relation(fields: [targetPostId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  reviewer       User?           @relation("CaseReviewer", fields: [reviewedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([status, createdAt], map: "moderation_queue_idx")
+  @@map("moderation_cases")
 }
