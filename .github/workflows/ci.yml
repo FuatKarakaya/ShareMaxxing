@@ -41,39 +41,39 @@ jobs:
 
       # Backend
       - name: Install backend dependencies
-        working-directory: sharemaxxing/backend
+        working-directory: backend
         run: npm ci
 
       - name: Validate Prisma
-        working-directory: sharemaxxing/backend
+        working-directory: backend
         run: npx prisma validate
 
       - name: Generate Prisma Client
-        working-directory: sharemaxxing/backend
+        working-directory: backend
         run: npx prisma generate
 
       - name: Apply database migrations
-        working-directory: sharemaxxing/backend
+        working-directory: backend
         run: npx prisma migrate deploy
 
       - name: Backend tests
-        working-directory: sharemaxxing/backend
+        working-directory: backend
         run: npm test
 
       - name: Backend build
-        working-directory: sharemaxxing/backend
+        working-directory: backend
         run: npm run build
 
       # Frontend
       # Commented out until frontend is implemented
       # - name: Install frontend dependencies
-      #   working-directory: sharemaxxing/frontend
+      #   working-directory: frontend
       #   run: npm ci
 
       # - name: Frontend tests
-      #   working-directory: sharemaxxing/frontend
+      #   working-directory: frontend
       #   run: npm test
 
       # - name: Frontend build
-      #   working-directory: sharemaxxing/frontend
+      #   working-directory: frontend
       #   run: npm run build
