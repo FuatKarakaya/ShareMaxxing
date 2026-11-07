@@ -17,6 +17,27 @@ Backend setup and the sign-up/login API contract are documented in
 [AuthBackend.md](docs/AuthBackend.md).
 
 
+From `backend/`, install dependencies, configure the local PostgreSQL connection, start PostgreSQL, generate the client, and apply migrations:
+
+```bash
+cd backend
+npm install
+cp .env.example .env
+sudo docker compose up -d
+npm run db:generate
+npm run db:migrate
+```
+
+Do not use `prisma db push`: migrations also maintain this project’s raw-SQL constraints, indexes, triggers, views, and lookup data.
+
+Generate the deterministic mock dataset after migrations with:
+
+```bash
+npm run db:seed:mock
+```
+
+This runs `backend/prisma/seed-mock.ts`, is safe to re-run, and refuses to run in production.
+
 ## Development and CI
 
 - Work on feature branches. Do not commit directly
