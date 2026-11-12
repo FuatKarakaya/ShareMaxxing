@@ -1,0 +1,24 @@
+name: Customer request
+description: A request from a customer (TA) meeting. Open within 48 hours.
+title: "[CR] "
+labels: ["customer-requests"]
+body:
+  - type: dropdown
+    id: meeting
+    attributes:
+      label: Which meeting
+      options: ["Meeting 1 (Project Plan)", "Meeting 2 (Requirements)", "Meeting 3 (Design)", "Meeting 4 (Tests and final)"]
+    validations: { required: true }
+  - type: textarea
+    id: request
+    attributes: { label: The request in our own words }
+    validations: { required: true }
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      value: |
+        Given
+        When
+        Then
+    validations: { required: true }
