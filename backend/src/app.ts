@@ -1,5 +1,6 @@
 import express from 'express';
 import { createAuthRouter } from './auth/router';
+import { createBookingRouter } from './bookings/router';
 import { errorHandler } from './lib/errors';
 
 export function createApp() {
@@ -10,6 +11,7 @@ export function createApp() {
     res.status(200).json({ status: 'ok' });
   });
   app.use('/api/auth', createAuthRouter());
+  app.use('/api/bookings', createBookingRouter());
   app.use((_req, res) => {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Adres bulunamadı.' } });
   });
