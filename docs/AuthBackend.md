@@ -13,11 +13,11 @@ pages (WBS-2.3) remain separate work.
 ## Local setup
 
 Use Node.js 22 (the CI version) and PostgreSQL 16. Run backend commands from
-`sharemaxxing/backend`, where `package.json` lives; the repository root is not
+`backend`, where `package.json` lives; the repository root is not
 an npm project.
 
 ```bash
-cd sharemaxxing/backend
+cd backend
 npm ci
 cp .env.example .env
 ```
@@ -163,7 +163,7 @@ backend without a frontend.
 
 ## Tests and CI
 
-All backend tests live in the existing `sharemaxxing/backend/tests/` directory.
+All backend tests live in the existing `backend/tests/` directory.
 The duplicate repository-root test directory has been removed. The submission
 guide asks for tests in a `tests/` folder but does not explicitly require that
 folder to be at the repository root; this follows the existing backend scaffold.
