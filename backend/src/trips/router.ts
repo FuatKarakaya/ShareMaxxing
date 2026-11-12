@@ -1,6 +1,14 @@
 import { Router } from 'express';
 import { authenticate } from '../auth/middleware';
-import { cancelTrip, createTrip, listCities, listMyTrips, updateTrip } from './service';
+import {
+  cancelTrip,
+  createTrip,
+  getTripDetail,
+  listCities,
+  listMyTrips,
+  searchTrips,
+  updateTrip,
+} from './service';
 import { parseUuid } from './validation';
 
 export function createCitiesRouter(): Router {
@@ -37,6 +45,26 @@ export function createTripRouter(): Router {
       res.set('Cache-Control', 'no-store');
       const trips = await listMyTrips(res.locals.user.id);
       res.json({ trips });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/', async (req, res, next) => {
+    try {
+      res.set('Cache-Control', 'no-store');
+      const trips = await searchTrips(req.query);
+      res.json({ trips });
+    } catch (error) {
+      next(error);
+    }
+  });
+
+  router.get('/:tripId', async (req, res, next) => {
+    try {
+      res.set('Cache-Control', 'no-store');
+      const trip = await getTripDetail(parseUuid(req.params.tripId, 'tripId'));
+      res.json({ trip });
     } catch (error) {
       next(error);
     }

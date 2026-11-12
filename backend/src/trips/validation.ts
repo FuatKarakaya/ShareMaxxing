@@ -20,6 +20,15 @@ const CREATE_FIELDS = new Set([
   'contactDetails',
 ]);
 
+const SEARCH_FIELDS = new Set(['originCityCode', 'destinationCityCode', 'date']);
+
+export interface SearchTripsInput {
+  originCityCode: number;
+  destinationCityCode: number;
+  dateStart?: Date;
+  dateEnd?: Date;
+}
+
 export interface CreateTripInput {
   originCityCode: number;
   destinationCityCode: number;
@@ -185,4 +194,42 @@ export function validateUpdateTrip(body: unknown, now = new Date()): UpdateTripI
   }
 
   return input;
+}
+
+function parseQueryCityCode(value: unknown, field: string): number {
+  if (typeof value === 'number') {
+    return parseCityCode(value, field);
+  }
+  if (typeof value === 'string' && /^\d+$/.test(value.trim())) {
+    return parseCityCode(Number(value.trim()), field);
+  }
+  throw new ApiError(400, 'VALIDATION_ERROR', `${field} 1 ile 81 arasında geçerli bir il plaka kodu olmalıdır.`);
+}
+
+export function validateSearchTripsQuery(query: unknown): SearchTripsInput {
+  const obj = requirePlainObject(query);
+  rejectUnknownFields(obj, SEARCH_FIELDS);
+
+  const originCityCode = parseQueryCityCode(obj.originCityCode, 'originCityCode');
+  const destinationCityCode = parseQueryCityCode(obj.destinationCityCode, 'destinationCityCode');
+  if (originCityCode === destinationCityCode) {
+    throw new ApiError(400, 'VALIDATION_ERROR', 'Başlangıç ve varış şehri aynı olamaz.');
+  }
+
+  if (obj.date === undefined || obj.date === '') {
+    return { originCityCode, destinationCityCode };
+  }
+
+  if (typeof obj.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(obj.date.trim())) {
+    throw new ApiError(400, 'VALIDATION_ERROR', 'date YYYY-MM-DD biçiminde geçerli bir tarih olmalıdır.');
+  }
+
+  const trimmedDate = obj.date.trim();
+  const dateStart = new Date(`${trimmedDate}T00:00:00.000Z`);
+  const dateEnd = new Date(`${trimmedDate}T23:59:59.999Z`);
+  if (Number.isNaN(dateStart.getTime()) || dateStart.toISOString().slice(0, 10) !== trimmedDate) {
+    throw new ApiError(400, 'VALIDATION_ERROR', 'date YYYY-MM-DD biçiminde geçerli bir tarih olmalıdır.');
+  }
+
+  return { originCityCode, destinationCityCode, dateStart, dateEnd };
 }

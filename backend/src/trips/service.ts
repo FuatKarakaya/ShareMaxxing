@@ -4,6 +4,7 @@ import { prisma } from '../lib/prisma';
 import {
   validateCreateTrip,
   validateRouteCities,
+  validateSearchTripsQuery,
   validateUpdateTrip,
 } from './validation';
 
@@ -222,4 +223,123 @@ export async function cancelTrip(driverId: string, tripId: string) {
   });
 
   return toTripResponse(row);
+}
+
+export async function searchTrips(rawQuery: unknown) {
+  const query = validateSearchTripsQuery(rawQuery);
+  const now = new Date();
+
+  // Expire any stale PENDING_PAYMENT reservations on matching published trips so seat counts are exact.
+  await prisma.booking.updateMany({
+    where: {
+      status: 'PENDING_PAYMENT',
+      reservationExpiresAt: { lte: now },
+      trip: {
+        originCityCode: query.originCityCode,
+        destinationCityCode: query.destinationCityCode,
+        status: 'PUBLISHED',
+      },
+    },
+    data: { status: 'EXPIRED' },
+  });
+
+  const departureFilter: Prisma.DateTimeFilter = {
+    gt: query.dateStart && query.dateStart > now ? query.dateStart : now,
+    ...(query.dateStart ? { gte: query.dateStart > now ? query.dateStart : now } : {}),
+    ...(query.dateEnd ? { lte: query.dateEnd } : {}),
+  };
+
+  const rows = await prisma.trip.findMany({
+    where: {
+      originCityCode: query.originCityCode,
+      destinationCityCode: query.destinationCityCode,
+      status: 'PUBLISHED',
+      departureAt: departureFilter,
+    },
+    orderBy: [{ departureAt: 'asc' }, { id: 'asc' }],
+    select: tripSelect,
+  });
+
+  const mapped = rows.map(toTripResponse);
+
+  // Order trips with free seats first (freeSeats > 0), full trips after them, then by departureAt ASC, id ASC (FR-11, databaseplan.md 4.10).
+  mapped.sort((a, b) => {
+    if (a.isFull !== b.isFull) {
+      return a.isFull ? 1 : -1;
+    }
+    const timeDiff = a.departureAt.getTime() - b.departureAt.getTime();
+    if (timeDiff !== 0) return timeDiff;
+    return a.id.localeCompare(b.id);
+  });
+
+  return mapped;
+}
+
+interface RevealedDriverRatingRow {
+  score: number;
+  review: string | null;
+  createdAt: Date;
+}
+
+export async function getTripDetail(tripId: string) {
+  const now = new Date();
+
+  await prisma.booking.updateMany({
+    where: {
+      tripId,
+      status: 'PENDING_PAYMENT',
+      reservationExpiresAt: { lte: now },
+    },
+    data: { status: 'EXPIRED' },
+  });
+
+  const row = await prisma.trip.findUnique({
+    where: { id: tripId },
+    select: {
+      ...tripSelect,
+      driver: {
+        select: {
+          id: true,
+          displayName: true,
+          bio: true,
+        },
+      },
+    },
+  });
+
+  if (!row) {
+    throw new ApiError(404, 'TRIP_NOT_FOUND', 'Yolculuk bulunamadı.');
+  }
+
+  // Only two-way revealed ratings (revealed_ride_ratings view, direction PASSENGER_TO_DRIVER) are visible (FR-12, FR-28).
+  const ratings = await prisma.$queryRaw<RevealedDriverRatingRow[]>`
+    SELECT r.score::int AS score, r.review, r.created_at AS "createdAt"
+    FROM revealed_ride_ratings r
+    JOIN bookings b ON b.id = r.booking_id
+    JOIN trips t ON t.id = b.trip_id
+    WHERE t.driver_id = ${row.driver.id}::uuid
+      AND r.direction = 'PASSENGER_TO_DRIVER'
+    ORDER BY r.created_at DESC
+  `;
+
+  const ratingCount = ratings.length;
+  const averageScore =
+    ratingCount > 0
+      ? Number((ratings.reduce((sum, item) => sum + item.score, 0) / ratingCount).toFixed(2))
+      : null;
+
+  const base = toTripResponse(row);
+  return {
+    ...base,
+    driver: {
+      id: row.driver.id,
+      displayName: row.driver.displayName,
+      bio: row.driver.bio,
+      ratingSummary: {
+        averageScore,
+        ratingCount,
+      },
+      ratings,
+    },
+  };
 }
