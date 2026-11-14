@@ -9,6 +9,6 @@ The API creates an active user report in the moderation queue. It returns
 400, missing or hidden targets return 404 and an existing active report from
 the same reporter for the same target returns 409.
 
-In Forum and Barınma, open a detail page while signed in to report content or
-its author. The trip details page is tracked separately in PR #37. Connect its
-report buttons to the same API when the page reaches main.
+Sign in with a verified account and open a forum question, room listing or trip
+detail to report the item or its author. A forum answer has its own report button.
+The form can be cancelled before submission.
