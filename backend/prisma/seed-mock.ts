@@ -18,9 +18,10 @@
  * Never run this against production: it refuses when NODE_ENV=production.
  */
 import { PrismaClient } from '@prisma/client';
+import { hashPassword } from '../src/lib/passwords';
 
 export const MOCK_PASSWORD = 'ShareMaxxing!2026';
-const PASSWORD_HASH =
+const LEGACY_PASSWORD_HASH =
   '$argon2id$v=19$m=19456,t=2,p=1$3Gc8Qc8gGOEVAs0UJRQ88Q$IGGUmoeX+BBbJ7Odt0t/n61EZv7iqArcT1AMm12PUJs';
 
 // Group numbers start at 101 so these ids never collide with seed.ts (groups 1-11).
@@ -71,12 +72,20 @@ export async function seedMock(prisma: PrismaClient): Promise<Tally> {
   // ── users (index 0-9) ──
   const first = ['Mert', 'Selin', 'Burak', 'Ece', 'Kaan', 'Defne', 'Emre', 'Ayşe', 'Oğuz', 'Melis'];
   const last = ['Aydın', 'Çelik', 'Doğan', 'Erdem', 'Güneş', 'Kılıç', 'Polat', 'Şen', 'Taş', 'Yalçın'];
-  const users = range(10).map((i) => ({
-    id: U(i), email: `mock${pad(i)}@itu.edu.tr`, passwordHash: PASSWORD_HASH, displayName: `${first[i]} ${last[i]}`,
+  const users = await Promise.all(range(10).map(async (i) => ({
+    id: U(i), email: `mock${pad(i)}@itu.edu.tr`, passwordHash: await hashPassword(MOCK_PASSWORD), displayName: `${first[i]} ${last[i]}`,
     bio: i % 2 === 0 ? `Mock kullanıcı ${pad(i)}` : null, role: i === 9 ? ('MODERATOR' as const) : ('USER' as const),
     emailVerifiedAt: at(-24 * 60), createdAt: at(-24 * 60),
-  }));
-  add('users', await prisma.user.createMany({ data: users, skipDuplicates: true }), users.length);
+  })));
+  const [insertedUsers] = await prisma.$transaction([
+    prisma.user.createMany({ data: users, skipDuplicates: true }),
+    // Update only accounts that still use the password hash from the old mock seed.
+    ...users.map(({ id, email, passwordHash }) => prisma.user.updateMany({
+      where: { id, email, passwordHash: LEGACY_PASSWORD_HASH },
+      data: { passwordHash },
+    })),
+  ]);
+  add('users', insertedUsers, users.length);
 
   const submerchants = range(10).map((i) => ({ userId: U(i), iyzicoSubmerchantKey: `mock-submerchant-${pad(i)}` }));
   add('driver_submerchants', await prisma.driverSubmerchant.createMany({ data: submerchants, skipDuplicates: true }), 10);
