@@ -10,9 +10,10 @@ export function AppRoutes() {
     <Routes>
       <Route element={<AppLayout />}>
         <Route index element={<HomePage />} />
-        {sections.map((section) => (
-          <Route key={section.path} path={section.path} element={<SectionPlaceholderPage title={section.title} description={section.description} />} />
-        ))}
+        {sections.map((section) => {
+          const Page = section.page
+          return <Route key={section.path} path={`${section.path}/*`} element={Page ? <Page /> : <SectionPlaceholderPage title={section.title} description={section.description} />} />
+        })}
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

@@ -1,0 +1,9 @@
+# Forum pages (WBS-19.2)
+
+Depends on WBS-19.1 forum API and PR #24 shared layout. Routes: /forum (category-filtered list, own-question toggle and pagination), /forum/yeni (create), /forum/:id (question and paginated replies), /forum/:id/duzenle (author edit). Answers can be created, edited or deleted by their author; deleting content requires confirmation. Errors/loading/empty states and retry controls are explicit. Backend remains authoritative for all permissions. User content renders as escaped React text.
+
+The existing shared apiRequest helper is used. Since WBS-2.3 login screens are not merged, a small isolated content sign-in adapter calls the existing /api/auth/login endpoint, stores the JWT only in module memory and clears on logout/401. Refresh requires signing in again. The authentication owner can replace features/content/session.ts and StudentSignIn with the shared session provider later; there is no registration/verification UI in this work package. Page routes never require copying tokens into a form or exposing database credentials.
+
+Run backend separately with a migrated local database and a verified test account (normal seed via backend scripts); run frontend npm ci, npm run dev, open /forum. Frontend checks: npm run lint, npm run typecheck, npm test, npm run build. Tests mock HTTP at the fetch boundary and exercise actual router/forms/auth headers/filtering/retry/create/edit/reply/delete-confirmation/login/logout flows. Visual/real-phone review remains a human check; layouts use the shared responsive frame and single-column forms.
+
+The housing pages PR reuses these content helpers and route-slot wiring by building on this branch. Merge this forum page PR before the housing page PR, after the forum API and shared layout prerequisites. Votes, keyword search and course-code tagging are separate WBS tasks.
