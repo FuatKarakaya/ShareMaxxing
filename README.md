@@ -38,16 +38,6 @@ npm run db:seed:mock
 
 This runs `backend/prisma/seed-mock.ts`, is safe to re-run, and refuses to run in production.
 
-From `frontend/`, install dependencies and start the Vite development server:
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-The frontend runs on `http://localhost:5173` and proxies `/api` requests to `http://localhost:3000`. Run frontend tests and production build checks with `npm test` and `npm run build`.
-
 ## Development and CI
 
 - Work on feature branches. Do not commit directly
@@ -64,3 +54,28 @@ The frontend runs on `http://localhost:5173` and proxies `/api` requests to `htt
 - Never use prisma db push as a replacement for
   committed migrations.
 
+## Frontend development (WBS-4.1 / WBS-4.2)
+
+The frontend uses the WBS-28.1 React 18, TypeScript, Vite, Tailwind CSS 3 and React Router 6 scaffold. Backend and frontend remain independent npm packages with separate lockfiles. Use Node.js 22.12+ (CI uses Node 22).
+
+```sh
+cd frontend
+npm ci
+npm run dev
+```
+
+Open the URL printed by Vite, normally `http://localhost:5173`. On Windows PowerShell use `npm.cmd` if execution policy blocks `npm.ps1`.
+
+```sh
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npm run preview
+```
+
+The Turkish shared layout includes responsive navigation, a skip link, page frame, footer and reusable form, card, button and alert components. `/` is the home page. `/yolculuklar`, `/askida-bilet`, `/barinma` and `/forum` are labelled placeholders for later work packages; unknown URLs show the shared 404 page. Tests live in `frontend/tests/` and use Vitest and React Testing Library. See [frontend conventions](frontend/README.md) for extension points.
+
+The shell runs without a database or environment file. Future requests use `frontend/src/lib/api.ts`; Vite proxies `/api` and `/health` to the Express backend at `http://localhost:3000`. Start that backend separately using [the authentication guide](docs/AuthBackend.md). Prisma, migrations and `DATABASE_URL` belong only in `backend/`; never put secrets in `VITE_*` variables. The backend ignore rules retain `.env.example` while excluding real `.env` files.
+
+For a phone on the same network, use `npm run dev -- --host 0.0.0.0`. A production static host must rewrite application routes to `index.html` and route `/api` to the backend, or supply a public `VITE_API_BASE_URL` with appropriate backend CORS support.
