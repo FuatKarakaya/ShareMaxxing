@@ -1,0 +1,21 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.aws/
+.codex/
+.agents/
+Context for AI/
+**/FUAT_DATABASE_CONTEXT.md
+**/ITU_ShareMaxxing_Database_Plan*.md
+sharemaxxing_setup.sql
+test-results/
+playwright-report/
