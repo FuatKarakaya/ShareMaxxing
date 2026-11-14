@@ -1,4 +1,5 @@
 import express from 'express';
+import { createHousingRouter } from './housing/router';
 import { createAuthRouter } from './auth/router';
 import { createBookingRouter } from './bookings/router';
 import { createForumRouter } from './forum/router';
@@ -17,6 +18,7 @@ export function createApp() {
   app.use('/api/bookings', createBookingRouter());
   app.use('/api/cities', createCitiesRouter());
   app.use('/api/trips', createTripRouter());
+  app.use('/api/housing', createHousingRouter());
   app.use((_req, res) => {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Adres bulunamadı.' } });
   });
