@@ -1,3 +1,71 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --font-sans: "Segoe UI", Arial, sans-serif;
+  --color-brand: #174d49;
+  --color-brand-dark: #103b38;
+  --color-mint: #c9f3b5;
+  --color-ink: #172e35;
+  --color-muted: #52656c;
+  --color-surface: #f5f7f6;
+  --color-line: #dde5e2;
+}
+
+@layer base {
+  body {
+    margin: 0;
+    min-width: 360px;
+    background: var(--color-surface);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    overflow-wrap: break-word;
+  }
+
+  button, a, input, select, textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :focus-visible {
+    outline: 3px solid #16756b;
+    outline-offset: 4px;
+  }
+
+  button:not(:disabled), select:not(:disabled) {
+    cursor: pointer;
+  }
+
+  ::selection {
+    background: var(--color-mint);
+    color: var(--color-ink);
+  }
+}
+
+@layer components {
+  .skip-link {
+    position: fixed;
+    z-index: 50;
+    top: 1rem;
+    left: 1rem;
+    transform: translateY(-200%);
+    border-radius: 0.75rem;
+    background: white;
+    padding: 0.75rem 1rem;
+    color: var(--color-brand);
+    font-weight: 600;
+  }
+
+  .skip-link:focus {
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
