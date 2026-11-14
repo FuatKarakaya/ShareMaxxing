@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react'
+import { TripsPage } from '../features/trips/TripsPage'
 import { HousingPage } from '../features/housing/HousingPage'
 import { ForumPage } from '../features/forum/ForumPage'
 
@@ -6,6 +7,7 @@ type Section = { path: string; title: string; description: string; symbol: strin
 export const sections: Section[] = [
   {
     path: '/yolculuklar',
+    page: TripsPage,
     title: 'Yol arkadaşlığı',
     description: 'İstanbul’a giden ya da İstanbul’dan yola çıkan İTÜ’lülerle yolunu paylaş.',
     symbol: '↗',
