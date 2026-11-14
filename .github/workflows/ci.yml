@@ -65,15 +65,14 @@ jobs:
         run: npm run build
 
       # Frontend
-      # Commented out until frontend is implemented
-      # - name: Install frontend dependencies
-      #   working-directory: frontend
-      #   run: npm ci
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
 
-      # - name: Frontend tests
-      #   working-directory: frontend
-      #   run: npm test
+      - name: Frontend tests
+        working-directory: frontend
+        run: npm test
 
-      # - name: Frontend build
-      #   working-directory: frontend
-      #   run: npm run build
+      - name: Frontend build
+        working-directory: frontend
+        run: npm run build

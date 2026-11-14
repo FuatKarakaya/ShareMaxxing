@@ -1,0 +1,21 @@
+name: Task
+description: A planned WBS activity or any other piece of work
+body:
+  - type: input
+    id: wbs
+    attributes: { label: WBS id (leave empty if unplanned), placeholder: "WBS-6.2" }
+  - type: textarea
+    id: what
+    attributes: { label: What }
+    validations: { required: true }
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      value: |
+        - [ ]
+        - [ ] Tests in CI
+    validations: { required: true }
+  - type: input
+    id: depends
+    attributes: { label: Depends on, placeholder: "#19" }

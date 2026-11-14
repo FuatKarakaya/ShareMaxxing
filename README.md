@@ -38,6 +38,16 @@ npm run db:seed:mock
 
 This runs `backend/prisma/seed-mock.ts`, is safe to re-run, and refuses to run in production.
 
+From `frontend/`, install dependencies and start the Vite development server:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend runs on `http://localhost:5173` and proxies `/api` requests to `http://localhost:3000`. Run frontend tests and production build checks with `npm test` and `npm run build`.
+
 ## Development and CI
 
 - Work on feature branches. Do not commit directly
