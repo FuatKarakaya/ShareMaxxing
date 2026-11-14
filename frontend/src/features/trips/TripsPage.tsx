@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Route, Routes, useNavigate, useParams } from 'react-router-dom'
+import { Link, Route, Routes, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { PageLayout } from '../../components/layout/PageLayout'
 import { Alert } from '../../components/ui/Alert'
 import { Button } from '../../components/ui/Button'
@@ -14,6 +14,7 @@ import { clearStudentSession, contentRequest, useStudentSession } from '../conte
 
 type City = { code: number; name: string }
 type TripStatus = 'PUBLISHED' | 'CANCELLED' | 'COMPLETED'
+type TripRating = { score: number; review: string | null; createdAt: string }
 type TripItem = {
   id: string
   status: TripStatus
@@ -28,6 +29,16 @@ type TripItem = {
   originCity: City
   destinationCity: City
   driver: { id: string; displayName: string }
+}
+
+type TripDetailItem = TripItem & {
+  driver: {
+    id: string
+    displayName: string
+    bio: string | null
+    ratingSummary: { averageScore: number | null; ratingCount: number }
+    ratings: TripRating[]
+  }
 }
 
 const ISTANBUL_CITY_CODE = 34
@@ -50,6 +61,19 @@ function formatPriceTl(priceMinor: number) {
   return `${(priceMinor / 100).toFixed(2)} TL`
 }
 
+function validateRoutePair(originCode: number, destinationCode: number): string {
+  if (!originCode || !destinationCode) {
+    return 'Başlangıç ve varış şehri seçilmelidir.'
+  }
+  if (originCode === destinationCode) {
+    return 'Başlangıç ve varış şehri aynı olamaz.'
+  }
+  if (originCode !== ISTANBUL_CITY_CODE && destinationCode !== ISTANBUL_CITY_CODE) {
+    return 'Yolculuğun başlangıç veya varış şehirlerinden biri İstanbul (34) olmalıdır.'
+  }
+  return ''
+}
+
 export function TripsPage() {
   const session = useStudentSession()
   return (
@@ -59,15 +83,17 @@ export function TripsPage() {
       ) : (
         <>
           <div className="mb-6 flex flex-wrap items-center gap-3">
+            <LinkButton to="/yolculuklar" variant="secondary">Yolculuk ara</LinkButton>
             <LinkButton to="/yolculuklar/benim" variant="secondary">Yolculuklarım</LinkButton>
             <LinkButton to="/yolculuklar/yeni">Yolculuk yayınla</LinkButton>
             <Button variant="ghost" onClick={clearStudentSession}>Çıkış yap</Button>
           </div>
           <Routes>
-            <Route index element={<MyTripsList />} />
+            <Route index element={<TripSearch />} />
             <Route path="benim" element={<MyTripsList />} />
             <Route path="yeni" element={<TripEditor />} />
             <Route path=":tripId/duzenle" element={<EditTrip />} />
+            <Route path=":tripId" element={<TripDetail />} />
             <Route path="*" element={<Alert variant="error" title="Sayfa bulunamadı" />} />
           </Routes>
         </>
@@ -98,6 +124,207 @@ function CancelTripAction({ onCancel }: { onCancel: () => Promise<void> }) {
   )
 }
 
+function TripSearch() {
+  const cities = useResource<{ cities: City[] }>('/cities')
+  const [params, setParams] = useSearchParams()
+
+  const paramOrigin = params.get('originCityCode') ?? ''
+  const paramDestination = params.get('destinationCityCode') ?? ''
+  const paramDate = params.get('date') ?? ''
+
+  const [originCityCode, setOriginCityCode] = useState(paramOrigin || String(ISTANBUL_CITY_CODE))
+  const [destinationCityCode, setDestinationCityCode] = useState(paramDestination)
+  const [dateFilter, setDateFilter] = useState(paramDate)
+  const [searchError, setSearchError] = useState('')
+
+  const activeRouteValid =
+    Boolean(paramOrigin && paramDestination) && !validateRoutePair(Number(paramOrigin), Number(paramDestination))
+
+  const searchQuery = activeRouteValid
+    ? `/trips?${new URLSearchParams({
+        originCityCode: paramOrigin,
+        destinationCityCode: paramDestination,
+        ...(paramDate ? { date: paramDate } : {}),
+      })}`
+    : ''
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <h2 className="mb-4 text-xl font-bold">Yolculuk ara</h2>
+        <ResourceState {...cities} />
+        <Form
+          aria-label="Yolculuk arama"
+          noValidate
+          onSubmit={(event) => {
+            event.preventDefault()
+            const routeError = validateRoutePair(Number(originCityCode), Number(destinationCityCode))
+            if (routeError) {
+              setSearchError(routeError)
+              return
+            }
+            setSearchError('')
+            setParams({
+              originCityCode,
+              destinationCityCode,
+              ...(dateFilter ? { date: dateFilter } : {}),
+            })
+          }}
+        >
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Select label="Başlangıç şehri" value={originCityCode} onChange={(e) => setOriginCityCode(e.target.value)} required>
+              <option value="">Şehir seçin</option>
+              {cities.data?.cities.map((city) => (
+                <option key={city.code} value={city.code}>{city.name}</option>
+              ))}
+            </Select>
+            <Select label="Varış şehri" value={destinationCityCode} onChange={(e) => setDestinationCityCode(e.target.value)} required>
+              <option value="">Şehir seçin</option>
+              {cities.data?.cities.map((city) => (
+                <option key={city.code} value={city.code}>{city.name}</option>
+              ))}
+            </Select>
+            <Input label="Tarih (isteğe bağlı)" type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} />
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Button type="submit" disabled={!cities.data}>Yolculuk ara</Button>
+          </div>
+          {searchError && <Alert variant="error" title="Arama yapılamadı">{searchError}</Alert>}
+        </Form>
+      </Card>
+
+      {searchQuery ? (
+        <TripSearchResults path={searchQuery} />
+      ) : (
+        <p role="status">Aramak için başlangıç ve varış şehrini seçin.</p>
+      )}
+    </div>
+  )
+}
+
+function TripSearchResults({ path }: { path: string }) {
+  const results = useResource<{ trips: TripItem[] }>(path)
+
+  return (
+    <div className="space-y-4">
+      <ResourceState {...results} />
+      {results.data && (
+        <>
+          {!results.data.trips.length && (
+            <p role="status">Seçilen kriterlere uygun yolculuk bulunamadı.</p>
+          )}
+          <div className="grid gap-4">
+            {results.data.trips.map((trip) => (
+              <Card key={trip.id}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-xl font-bold">
+                    <Link className="text-brand underline" to={`/yolculuklar/${trip.id}`}>
+                      {trip.originCity.name} → {trip.destinationCity.name}
+                    </Link>
+                  </h3>
+                  {trip.isFull && (
+                    <span className="rounded-lg bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-900">Dolu</span>
+                  )}
+                </div>
+                <p className="mt-2 text-sm text-muted">
+                  Sürücü: {trip.driver.displayName} · Kalkış: {formatDateTime(trip.departureAt)} · Ücret: {formatPriceTl(trip.priceMinor)}
+                </p>
+                <p className="mt-1 text-sm text-muted">
+                  {trip.freeSeats} / {trip.seatCapacity} boş koltuk
+                </p>
+                {trip.description && <p className="mt-3 whitespace-pre-wrap">{trip.description}</p>}
+              </Card>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function TripDetail() {
+  const { tripId } = useParams()
+  const detail = useResource<{ trip: TripDetailItem }>(`/trips/${tripId}`)
+  const session = useStudentSession()
+  const navigate = useNavigate()
+
+  if (!detail.data) return <ResourceState {...detail} />
+
+  const trip = detail.data.trip
+  const isDriver = trip.driver.id === session?.user.id
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-2xl font-bold">{trip.originCity.name} → {trip.destinationCity.name}</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-lg bg-surface px-3 py-1 text-sm font-semibold">{STATUS_LABELS[trip.status]}</span>
+            {trip.isFull && (
+              <span className="rounded-lg bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-900">Dolu</span>
+            )}
+          </div>
+        </div>
+
+        <p className="mt-3 text-sm text-muted">
+          Kalkış: {formatDateTime(trip.departureAt)} · Koltuk başı ücret: {formatPriceTl(trip.priceMinor)}
+        </p>
+        <p className="mt-1 text-sm text-muted">
+          {trip.freeSeats} / {trip.seatCapacity} boş koltuk
+        </p>
+
+        <h3 className="mt-6 font-bold">Açıklama</h3>
+        <p className="mt-2 whitespace-pre-wrap">{trip.description || 'Sürücü açıklama eklemedi.'}</p>
+
+        <h3 className="mt-6 font-bold">İletişim</h3>
+        <p className="mt-2 whitespace-pre-wrap">{trip.contactDetails || 'Sürücü iletişim bilgisi paylaşmadı.'}</p>
+
+        {isDriver && trip.status === 'PUBLISHED' && (
+          <div className="mt-6 flex flex-wrap items-start gap-3">
+            <LinkButton to={`/yolculuklar/${trip.id}/duzenle`} variant="secondary">Yolculuğu düzenle</LinkButton>
+            <CancelTripAction onCancel={async () => {
+              await contentRequest(`/trips/${trip.id}/cancel`, { method: 'POST' })
+              navigate('/yolculuklar/benim')
+            }} />
+          </div>
+        )}
+
+        {!isDriver && trip.isFull && (
+          <div className="mt-6 space-y-3">
+            <p role="status">Bu yolculuk dolu; koltuk rezervasyonu yapılamaz.</p>
+            <Button disabled>Yolculuk dolu</Button>
+          </div>
+        )}
+      </Card>
+
+      <Card>
+        <h3 className="text-xl font-bold">Sürücü bilgileri</h3>
+        <p className="mt-2 font-semibold">{trip.driver.displayName}</p>
+        <p className="mt-2 whitespace-pre-wrap text-muted">{trip.driver.bio || 'Sürücü henüz biyografi eklemedi.'}</p>
+
+        <h4 className="mt-5 font-bold">Değerlendirmeler</h4>
+        {trip.driver.ratingSummary.ratingCount > 0 && trip.driver.ratingSummary.averageScore !== null ? (
+          <div className="mt-2 space-y-3">
+            <p className="text-sm font-semibold">
+              Ortalama puan: {trip.driver.ratingSummary.averageScore.toFixed(1)} / 5 ({trip.driver.ratingSummary.ratingCount} değerlendirme)
+            </p>
+            <div className="space-y-2">
+              {trip.driver.ratings.map((rating, index) => (
+                <div key={`${rating.createdAt}-${index}`} className="rounded-xl border border-line p-3 text-sm">
+                  <p className="font-semibold">{rating.score} / 5</p>
+                  {rating.review && <p className="mt-1 whitespace-pre-wrap">{rating.review}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="mt-2 text-sm text-muted">Henüz görünür değerlendirme yok.</p>
+        )}
+      </Card>
+    </div>
+  )
+}
+
 function MyTripsList() {
   const list = useResource<{ trips: TripItem[] }>('/trips/mine')
 
@@ -112,7 +339,11 @@ function MyTripsList() {
             {list.data.trips.map((trip) => (
               <Card key={trip.id}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="text-xl font-bold">{trip.originCity.name} → {trip.destinationCity.name}</h3>
+                  <h3 className="text-xl font-bold">
+                    <Link className="text-brand underline" to={`/yolculuklar/${trip.id}`}>
+                      {trip.originCity.name} → {trip.destinationCity.name}
+                    </Link>
+                  </h3>
                   <span className="rounded-lg bg-surface px-3 py-1 text-sm font-semibold">{STATUS_LABELS[trip.status]}</span>
                 </div>
                 <p className="mt-2 text-sm text-muted">
@@ -185,16 +416,9 @@ function TripEditor({ trip }: { trip?: TripItem }) {
   function validateClient(): { origin: number; destination: number; departureAt: string; capacity: number; priceMinor: number } | null {
     const origin = Number(originCityCode)
     const destination = Number(destinationCityCode)
-    if (!origin || !destination) {
-      setFormError('Başlangıç ve varış şehri seçilmelidir.')
-      return null
-    }
-    if (origin === destination) {
-      setFormError('Başlangıç ve varış şehri aynı olamaz.')
-      return null
-    }
-    if (origin !== ISTANBUL_CITY_CODE && destination !== ISTANBUL_CITY_CODE) {
-      setFormError('Yolculuğun başlangıç veya varış şehirlerinden biri İstanbul (34) olmalıdır.')
+    const routeError = validateRoutePair(origin, destination)
+    if (routeError) {
+      setFormError(routeError)
       return null
     }
     if (!departureDate || !departureTime) {
