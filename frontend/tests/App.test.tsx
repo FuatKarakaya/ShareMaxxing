@@ -18,7 +18,7 @@ test('opens the Turkish home page inside the shared shell', () => {
   expect(document.title).toBe('Ana sayfa | İTÜ ShareMaxxing')
 })
 
-test.each(sections)('opens $path directly with the shared layout', ({ path, title }) => {
+test.each(sections.filter(section => !section.page))('opens $path directly with the shared layout', ({ path, title }) => {
   renderApp(path)
   expect(screen.getByRole('heading', { level: 1, name: title })).toBeInTheDocument()
   expect(screen.getByRole('status')).toHaveTextContent('Bu bölüm hazırlanıyor')

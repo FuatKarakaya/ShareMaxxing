@@ -9,7 +9,7 @@ export function AppLayout() {
   const previousPath = useRef(pathname)
 
   useEffect(() => {
-    const title = pathname === '/' ? 'Ana sayfa' : sections.find((section) => section.path === pathname)?.title ?? 'Sayfa bulunamadı'
+    const title = pathname === '/' ? 'Ana sayfa' : sections.find((section) => section.path === pathname || pathname.startsWith(`${section.path}/`))?.title ?? 'Sayfa bulunamadı'
     document.title = `${title} | İTÜ ShareMaxxing`
     if (previousPath.current !== pathname) {
       mainRef.current?.focus()

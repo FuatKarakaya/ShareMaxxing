@@ -1,4 +1,8 @@
-export const sections = [
+import type { ComponentType } from 'react'
+import { ForumPage } from '../features/forum/ForumPage'
+
+type Section = { path: string; title: string; description: string; symbol: string; accent: string; page?: ComponentType }
+export const sections: Section[] = [
   {
     path: '/yolculuklar',
     title: 'Yol arkadaşlığı',
@@ -22,9 +26,10 @@ export const sections = [
   },
   {
     path: '/forum',
+    page: ForumPage,
     title: 'Öğrenci forumu',
     description: 'Derslerden kampüs yaşamına, sorularını ve bildiklerini toplulukla paylaş.',
     symbol: '☰',
     accent: 'bg-violet-100 text-violet-900',
   },
-] as const
+]
