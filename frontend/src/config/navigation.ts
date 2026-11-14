@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react'
+import { HousingPage } from '../features/housing/HousingPage'
 import { ForumPage } from '../features/forum/ForumPage'
 
 type Section = { path: string; title: string; description: string; symbol: string; accent: string; page?: ComponentType }
@@ -19,6 +20,7 @@ export const sections: Section[] = [
   },
   {
     path: '/barinma',
+    page: HousingPage,
     title: 'Ev ve oda arkadaşı',
     description: 'İstanbul’da bir oda veya aynı evi paylaşacağın bir İTÜ’lü bul.',
     symbol: '⌂',
