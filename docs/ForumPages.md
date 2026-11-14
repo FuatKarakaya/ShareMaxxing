@@ -6,4 +6,4 @@ The existing shared apiRequest helper is used. Since WBS-2.3 login screens are n
 
 Run backend separately with a migrated local database and a verified test account (normal seed via backend scripts); run frontend npm ci, npm run dev, open /forum. Frontend checks: npm run lint, npm run typecheck, npm test, npm run build. Tests mock HTTP at the fetch boundary and exercise actual router/forms/auth headers/filtering/retry/create/edit/reply/delete-confirmation/login/logout flows. Visual/real-phone review remains a human check; layouts use the shared responsive frame and single-column forms.
 
-Common content helpers and the route-slot wiring will be reused unchanged in the housing pages PR so either frontend feature can merge first after its dependencies. Votes, keyword search and course-code tagging are separate WBS tasks.
+The housing pages PR reuses these content helpers and route-slot wiring by building on this branch. Merge this forum page PR before the housing page PR, after the forum API and shared layout prerequisites. Votes, keyword search and course-code tagging are separate WBS tasks.
