@@ -16,7 +16,10 @@
     "db:test:reset": "tsx scripts/database.ts test:reset",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
-    "db:seed:mock": "tsx prisma/seed-mock.ts"
+    "db:seed:mock": "tsx prisma/seed-mock.ts",
+    "loadtest": "tsx scripts/load-test.ts",
+    "loadtest:seed": "tsx scripts/load-test-data.ts seed",
+    "loadtest:clean": "tsx scripts/load-test-data.ts clean"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",
