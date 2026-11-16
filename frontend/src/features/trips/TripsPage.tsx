@@ -11,6 +11,8 @@ import { ResourceState } from '../content/ContentControls'
 import { StudentSignIn } from '../content/StudentSignIn'
 import { useAction, useResource } from '../content/hooks'
 import { clearStudentSession, contentRequest, useStudentSession } from '../content/session'
+import { BookSeatAction, MyBookingsList } from '../bookings/BookingScreens'
+import { formatDateTime, formatPriceTl } from './format'
 
 type City = { code: number; name: string }
 type TripStatus = 'PUBLISHED' | 'CANCELLED' | 'COMPLETED'
@@ -49,18 +51,6 @@ const STATUS_LABELS: Record<TripStatus, string> = {
   COMPLETED: 'Tamamlandı',
 }
 
-function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat('tr-TR', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    timeZone: 'Europe/Istanbul',
-  }).format(new Date(value))
-}
-
-function formatPriceTl(priceMinor: number) {
-  return `${(priceMinor / 100).toFixed(2)} TL`
-}
-
 function validateRoutePair(originCode: number, destinationCode: number): string {
   if (!originCode || !destinationCode) {
     return 'Başlangıç ve varış şehri seçilmelidir.'
@@ -85,12 +75,14 @@ export function TripsPage() {
           <div className="mb-6 flex flex-wrap items-center gap-3">
             <LinkButton to="/yolculuklar" variant="secondary">Yolculuk ara</LinkButton>
             <LinkButton to="/yolculuklar/benim" variant="secondary">Yolculuklarım</LinkButton>
+            <LinkButton to="/yolculuklar/rezervasyonlarim" variant="secondary">Rezervasyonlarım</LinkButton>
             <LinkButton to="/yolculuklar/yeni">Yolculuk yayınla</LinkButton>
             <Button variant="ghost" onClick={clearStudentSession}>Çıkış yap</Button>
           </div>
           <Routes>
             <Route index element={<TripSearch />} />
             <Route path="benim" element={<MyTripsList />} />
+            <Route path="rezervasyonlarim" element={<MyBookingsList />} />
             <Route path="yeni" element={<TripEditor />} />
             <Route path=":tripId/duzenle" element={<EditTrip />} />
             <Route path=":tripId" element={<TripDetail />} />
@@ -295,6 +287,8 @@ function TripDetail() {
             <Button disabled>Yolculuk dolu</Button>
           </div>
         )}
+
+        {!isDriver && !trip.isFull && trip.status === 'PUBLISHED' && <BookSeatAction tripId={trip.id} />}
       </Card>
 
       <Card>
