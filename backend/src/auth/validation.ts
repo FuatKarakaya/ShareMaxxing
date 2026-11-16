@@ -4,16 +4,21 @@ function invalid(message: string): never {
   throw new ApiError(400, 'VALIDATION_ERROR', message);
 }
 
-export function credentials(body: unknown): { email: string; password: string } {
-  if (!body || typeof body !== 'object' || Array.isArray(body)) {
-    invalid('JSON nesnesi gönderilmelidir.');
-  }
-  const { email, password } = body as Record<string, unknown>;
+export function studentEmail(email: unknown): string {
   if (typeof email !== 'string' || email.length > 254) invalid('Geçerli bir İTÜ e-postası girin.');
   const normalized = email.trim().toLowerCase();
   if (!/^[a-z0-9._%+-]+@itu\.edu\.tr$/.test(normalized)) {
     invalid('Yalnızca @itu.edu.tr adresleri kabul edilir.');
   }
+  return normalized;
+}
+
+export function credentials(body: unknown): { email: string; password: string } {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    invalid('JSON nesnesi gönderilmelidir.');
+  }
+  const { email, password } = body as Record<string, unknown>;
+  const normalized = studentEmail(email);
   // Do not trim passwords: spaces are part of the user's password.
   if (typeof password !== 'string' || password.length < 8 || password.length > 128) {
     invalid('Parola 8–128 karakter olmalıdır.');
