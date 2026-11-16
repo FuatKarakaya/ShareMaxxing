@@ -20,10 +20,23 @@ async function category(tx: Prisma.TransactionClient, id?: string) {
   if (id && !await tx.forumCategory.findUnique({ where: { id } })) throw invalid();
 }
 export async function listQuestions(actor: Actor, query: unknown, mine = false) {
-  const data = object(query, ['categoryId', 'page']);
+  const data = object(query, ['categoryId', 'page', 'q']);
   const current = page(data.page);
   const where: Prisma.ForumPostWhereInput = { kind: 'QUESTION', ...(mine ? { authorId: actor.id } : { hiddenAt: null }) };
   if (data.categoryId !== undefined) where.categoryId = uuid(data.categoryId);
+  if (data.q !== undefined) {
+    if (typeof data.q !== 'string' || data.q.length > 200) throw invalid();
+    const keyword = data.q.trim();
+    if (keyword) {
+      // Prisma contains uses LIKE: escape metacharacters for literal substring search.
+      const contains = keyword.replace(/[\\%_]/g, '\\$&');
+      const match = { contains, mode: 'insensitive' as const };
+      where.OR = [
+        { title: match }, { body: match },
+        { answers: { some: { kind: 'ANSWER', hiddenAt: null, body: match } } },
+      ];
+    }
+  }
   const rows = await prisma.forumPost.findMany({ where, include, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], skip: (current - 1) * 20, take: 21 });
   return { questions: rows.slice(0, 20), page: current, hasMore: rows.length > 20 };
 }

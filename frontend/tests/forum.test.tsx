@@ -103,6 +103,21 @@ test('expired authentication clears the session and offers sign-in again', async
   expect(screen.queryByRole('link', { name: base.title })).not.toBeInTheDocument()
 })
 
+test('submits keyword search, preserves filters on pagination, and clears it', async () => {
+  const user = userEvent.setup(); open('/forum?categoryId=category-1&page=2&q=old')
+  const field = await screen.findByRole('searchbox')
+  expect(field).toHaveValue('old')
+  await user.clear(field); await user.type(field, '  campus & bus  ')
+  await user.click(screen.getByRole('button', { name: /^Ara$/ }))
+  await waitFor(() => expect(calls.some(c => c.path === '/api/forum/questions?page=1&q=campus+%26+bus&categoryId=category-1')).toBe(true))
+  await screen.findByRole('link', { name: base.title })
+  await user.click(screen.getByRole('button', { name: 'Sonraki' }))
+  await waitFor(() => expect(calls.some(c => c.path === '/api/forum/questions?page=2&q=campus+%26+bus&categoryId=category-1')).toBe(true))
+  await user.click(screen.getByRole('button', { name: /temizle/ }))
+  await waitFor(() => expect(screen.getByRole('searchbox')).toHaveValue(''))
+  expect(calls.at(-1)?.path).toBe('/api/forum/questions?page=1&categoryId=category-1')
+})
+
 test('can cancel or submit a report from the question detail', async () => {
   const user = userEvent.setup()
   open('/forum/question-1')
