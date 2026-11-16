@@ -1,3 +1,4 @@
+import { ReportButton } from '../content/ReportButton'
 import { useState } from 'react'
 import { Link, Route, Routes, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { PageLayout } from '../../components/layout/PageLayout'
@@ -281,6 +282,10 @@ function TripDetail() {
           </div>
         )}
 
+        <div className="mt-4">
+          <ReportButton key={trip.id} targetType="TRIP" targetId={trip.id} label="Yolculuğu bildir" />
+        </div>
+
         {!isDriver && trip.isFull && (
           <div className="mt-6 space-y-3">
             <p role="status">Bu yolculuk dolu; koltuk rezervasyonu yapılamaz.</p>
@@ -295,6 +300,10 @@ function TripDetail() {
         <h3 className="text-xl font-bold">Sürücü bilgileri</h3>
         <p className="mt-2 font-semibold">{trip.driver.displayName}</p>
         <p className="mt-2 whitespace-pre-wrap text-muted">{trip.driver.bio || 'Sürücü henüz biyografi eklemedi.'}</p>
+
+        {!isDriver && <div className="mt-4">
+          <ReportButton key={trip.driver.id} targetType="USER" targetId={trip.driver.id} label="Sürücüyü bildir" />
+        </div>}
 
         <h4 className="mt-5 font-bold">Değerlendirmeler</h4>
         {trip.driver.ratingSummary.ratingCount > 0 && trip.driver.ratingSummary.averageScore !== null ? (

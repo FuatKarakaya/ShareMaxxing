@@ -107,6 +107,10 @@ beforeEach(async () => {
     if (url.pathname === '/api/auth/login') {
       return json({ accessToken: 'test-token', user: { id: 'passenger-1', displayName: 'Elif', role: 'USER' } })
     }
+    if (url.pathname === '/api/reports' && method === 'POST') {
+      if (JSON.parse(String(init?.body)).targetId !== 'trip-open') return json({}, 400)
+      return json({ report: { id: 'report-1', status: 'ACTIVE' } }, 201)
+    }
     if (url.pathname === '/api/cities') {
       return json({ cities })
     }
@@ -238,4 +242,14 @@ test('handles API failure and retries search and detail views', async () => {
   failDetail = false
   await user.click(screen.getByRole('button', { name: 'Tekrar dene' }))
   await screen.findByText('Mert Yılmaz')
+})
+
+test('reports the trip from its detail page', async () => {
+  const user = userEvent.setup()
+  render(<MemoryRouter initialEntries={['/yolculuklar/trip-open']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><AppRoutes /></MemoryRouter>)
+  await user.click(await screen.findByRole('button', { name: 'Yolculuğu bildir' }))
+  await user.type(screen.getByLabelText(/Bildirim nedeni/), 'İncelensin')
+  await user.click(screen.getByRole('button', { name: 'Bildirimi gönder' }))
+  expect(await screen.findByText('Bildiriminiz moderasyon ekibine iletildi.')).toBeVisible()
+  expect(calls.find(c => c.path === '/api/reports')?.headers.get('Authorization')).toBe('Bearer test-token')
 })
