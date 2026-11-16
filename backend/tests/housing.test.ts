@@ -3,6 +3,7 @@ import request from 'supertest';
 import { createApp } from '../src/app';
 import { prisma } from '../src/lib/prisma';
 import { issueAccessToken } from '../src/lib/tokens';
+import { reviewsSettled } from '../src/content/review';
 const url = process.env.TEST_DATABASE_URL;
 if (!url || process.env.DATABASE_URL !== url || !new URL(url).pathname.endsWith('_test')) throw new Error('Use npm test.');
 const prefix = `housing-${randomUUID()}`;
@@ -19,6 +20,7 @@ beforeAll(async () => {
   districtId = (await prisma.istanbulDistrict.findFirstOrThrow()).id;
 });
 afterAll(async () => {
+  await reviewsSettled();
   await prisma.moderationCase.deleteMany({ where: { targetHousing: { author: { email: { startsWith: prefix } } } } });
   // Solved cases retain history with NULL targets; test cases are tagged before deletion below.
   await prisma.moderationCase.deleteMany({ where: { reason: prefix } });
@@ -46,6 +48,7 @@ test('creates, filters, edits, closes and reopens without exposing private accou
   const created = (await post().expect(201)).body.listing;
   expect(created).toMatchObject({ title: payload().title, status: 'ACTIVE', author: { id: owner.id } });
   expect(JSON.stringify(created)).not.toMatch(/password|@itu.edu.tr/);
+  await reviewsSettled();
   expect(await prisma.moderationCase.count({ where: { targetHousingId: created.id, aiUnavailable: true } })).toBe(1);
   const read = await api.get(`/api/housing?districtId=${districtId}&listingType=HAVE_ROOM`).auth(other.token, { type: 'bearer' }).expect(200);
   expect(read.body.listings.map((x: { id: string }) => x.id)).toContain(created.id);
@@ -58,6 +61,7 @@ test('creates, filters, edits, closes and reopens without exposing private accou
   const mine = await api.get('/api/housing/mine').auth(owner.token, { type: 'bearer' }).expect(200);
   expect(mine.body.listings.some((x: { id: string }) => x.id === created.id)).toBe(true);
   await api.patch(`/api/housing/${created.id}`).auth(owner.token, { type: 'bearer' }).send({ status: 'ACTIVE' }).expect(200);
+  await reviewsSettled();
   expect(await prisma.moderationCase.count({ where: { targetHousingId: created.id, status: 'ACTIVE' } })).toBe(1);
 });
 test('hides moderated listings from browse/detail but retains author and staff access', async () => {
@@ -70,6 +74,7 @@ test('hides moderated listings from browse/detail but retains author and staff a
 });
 test('deletion resolves moderation cases atomically before clearing their content reference', async () => {
   const row = (await post().expect(201)).body.listing;
+  await reviewsSettled();
   await prisma.moderationCase.updateMany({ where: { targetHousingId: row.id }, data: { reason: prefix } });
   await api.patch(`/api/housing/${row.id}`).auth(owner.token, { type: 'bearer' }).send({}).expect(400);
   await api.delete(`/api/housing/${row.id}`).auth(owner.token, { type: 'bearer' }).expect(204);
