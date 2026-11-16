@@ -54,6 +54,10 @@ This runs `backend/prisma/seed-mock.ts`, is safe to re-run, and refuses to run i
 - Never use prisma db push as a replacement for
   committed migrations.
 
+## Live site and deployment (WBS-29.1 / WBS-29.2)
+
+The live site runs on Render (API and website) and Neon (database). Every merge to `main` is deployed automatically after the CI checks pass. Setup steps, settings and free-plan limits are in [CloudSetup.md](docs/CloudSetup.md).
+
 ## Frontend development (WBS-4.1 / WBS-4.2)
 
 The frontend uses the WBS-28.1 React 18, TypeScript, Vite, Tailwind CSS 3 and React Router 6 scaffold. Backend and frontend remain independent npm packages with separate lockfiles. Use Node.js 22.12+ (CI uses Node 22).
