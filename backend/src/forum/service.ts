@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import { ApiError } from '../lib/errors';
 import { invalid, object, text, uuid, page } from '../content/validation';
 import { queueHumanReview } from '../content/review';
+import { createNotification } from '../notifications/service';
 type Actor = Pick<User, 'id' | 'role'>;
 const include = { author: { select: { id: true, displayName: true } }, category: true };
 const missing = () => new ApiError(404, 'NOT_FOUND', 'Gönderi bulunamadı.');
@@ -70,7 +71,18 @@ export async function createAnswer(actor: Actor, id: string, value: unknown, sen
     const answer = await tx.forumPost.create({ data: { authorId: actor.id, kind: 'ANSWER', parentPostId: id, body: data.body! }, include });
     await queueHumanReview(tx, { targetPostId: answer.id });
     const event = parent.authorId === actor.id ? null : { questionId: id, answerId: answer.id, recipientId: parent.authorId };
-    if (event) await tx.notification.create({ data: { recipientId: event.recipientId, kind: 'FORUM_REPLY', payload: { questionId: id, answerId: answer.id, link: `/forum/${id}`, text: 'Sorunuza yeni bir yanıt geldi.' } } });
+    if (event) {
+      await createNotification(
+        {
+          recipientId: event.recipientId,
+          kind: 'FORUM_REPLY',
+          text: 'Sorunuza yeni bir yanıt geldi.',
+          link: `/forum/${id}`,
+          metadata: { questionId: id, answerId: answer.id },
+        },
+        tx,
+      );
+    }
     return { answer, event };
   });
   if (result.event) {
