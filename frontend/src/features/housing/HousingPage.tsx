@@ -1,3 +1,4 @@
+import { ReportButton } from '../content/ReportButton'
 import { useState } from 'react'
 import { Link, Route, Routes, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { PageLayout } from '../../components/layout/PageLayout'
@@ -59,6 +60,10 @@ function ListingDetail() {
     {row.status === 'CLOSED' && <Alert variant="info" title="İlan kapalı" />}{row.hiddenAt && <Alert variant="info" title="İlan moderasyon nedeniyle gizli" />}
     <p className="mt-4 whitespace-pre-wrap">{row.description}</p><h3 className="mt-6 font-bold">İletişim</h3><p className="mt-2 whitespace-pre-wrap">{row.contactDetails || 'İlan sahibi iletişim bilgisi paylaşmadı.'}</p>
     {row.authorId === session?.user.id && <div className="mt-6 flex flex-wrap items-start gap-3"><LinkButton to={`/barinma/${row.id}/duzenle`} variant="secondary">İlanı düzenle</LinkButton><Button variant="secondary" loading={action.busy} onClick={() => { void action.run(async () => { await contentRequest(`/housing/${row.id}`, { method: 'PATCH', body: JSON.stringify({ status: row.status === 'ACTIVE' ? 'CLOSED' : 'ACTIVE' }) }); detail.reload() }) }}>{row.status === 'ACTIVE' ? 'İlanı kapat' : 'İlanı yeniden aç'}</Button><DeleteAction onDelete={async () => { await contentRequest(`/housing/${row.id}`, { method: 'DELETE' }); navigate('/barinma') }}>İlanı sil</DeleteAction></div>}
+    {!row.hiddenAt && <div className="mt-4 space-y-2">
+      <ReportButton key={row.id} targetType="HOUSING" targetId={row.id} label="İlanı bildir" />
+      {row.authorId !== session?.user.id && <ReportButton key={row.authorId} targetType="USER" targetId={row.authorId} label="İlan sahibini bildir" />}
+    </div>}
     {action.error && <Alert variant="error" title="İlan güncellenemedi">{action.error}</Alert>}
   </Card>
 }
