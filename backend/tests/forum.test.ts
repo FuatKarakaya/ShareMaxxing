@@ -112,3 +112,43 @@ test('paginates answers in stable chronological order', async () => {
   }
   expect(ids).toHaveLength(22); expect(new Set(ids).size).toBe(22);
 });
+
+test('searches literal title/body and visible replies without exposing hidden posts', async () => {
+  const key = randomUUID();
+  const title = (await post({ ...payload(), title: `${key} Campus` }).expect(201)).body.question;
+  const body = (await post({ ...payload(), body: `${key} campus` }).expect(201)).body.question;
+  const reply = (await post().expect(201)).body.question;
+  const hiddenReply = (await post().expect(201)).body.question;
+  await prisma.forumPost.createMany({ data: [
+    { authorId: owner.id, kind: 'ANSWER', parentPostId: reply.id, body: `${key} CAMPUS` },
+    { authorId: owner.id, kind: 'ANSWER', parentPostId: hiddenReply.id, body: `${key} campus`, hiddenAt: new Date() },
+  ] });
+  const search = (q: string, extra = '') => api.get(`/api/forum/questions?q=${encodeURIComponent(q)}${extra}`).auth(other.token, { type: 'bearer' });
+  const results = await search(`  ${key} campus  `).expect(200);
+  expect(results.body.questions.map((q: { id: string }) => q.id).sort()).toEqual([title.id, body.id, reply.id].sort());
+  await prisma.forumPost.update({ where: { id: title.id }, data: { hiddenAt: new Date() } });
+  expect((await search(key).expect(200)).body.questions.map((q: { id: string }) => q.id)).not.toContain(title.id);
+  expect((await search(key, `&categoryId=${randomUUID()}`).expect(200)).body.questions).toEqual([]);
+  const literal = `${key}%_\\`;
+  const exact = (await post({ ...payload(), body: literal }).expect(201)).body.question;
+  expect((await search(literal).expect(200)).body.questions.map((q: { id: string }) => q.id)).toEqual([exact.id]);
+  expect((await search(randomUUID()).expect(200)).body.questions).toEqual([]);
+  for (const query of ['q=a&q=b', 'q[x]=a', `q=${'x'.repeat(201)}`]) {
+    await api.get(`/api/forum/questions?${query}`).auth(other.token, { type: 'bearer' }).expect(400);
+  }
+  await search('   ').expect(200);
+  await api.get(`/api/forum/questions/mine?q=${key}`).auth(owner.token, { type: 'bearer' }).expect(200)
+    .expect(r => expect(r.body.questions.some((q: { id: string }) => q.id === title.id)).toBe(true));
+});
+
+test('search results paginate stably without duplicating matching reply parents', async () => {
+  const key = randomUUID();
+  await prisma.forumPost.createMany({ data: Array.from({ length: 22 }, () => ({ authorId: owner.id, kind: 'QUESTION' as const, categoryId, title: key, body: 'Search pagination' })) });
+  const ids: string[] = [];
+  for (const page of [1, 2]) {
+    const r = await api.get(`/api/forum/questions?q=${key}&page=${page}`).auth(owner.token, { type: 'bearer' }).expect(200);
+    expect(r.body.hasMore).toBe(page === 1);
+    ids.push(...r.body.questions.map((q: { id: string }) => q.id));
+  }
+  expect(ids).toHaveLength(22); expect(new Set(ids).size).toBe(22);
+});

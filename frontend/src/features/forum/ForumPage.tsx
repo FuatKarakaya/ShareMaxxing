@@ -26,18 +26,27 @@ export function ForumPage() {
 }
 function QuestionList() {
   const [params, setParams] = useSearchParams()
+  const keyword = params.get('q') ?? ''
   const category = params.get('categoryId') ?? ''
   const current = Number(params.get('page') ?? 1)
   const mine = params.get('mine') === '1'
   const categories = useResource<{ categories: Category[] }>('/forum/categories')
-  const query = new URLSearchParams({ page: String(current), ...(category ? { categoryId: category } : {}) })
+  const query = new URLSearchParams({ page: String(current), ...(keyword ? { q: keyword } : {}), ...(category ? { categoryId: category } : {}) })
   const list = useResource<{ questions: Post[]; page: number; hasMore: boolean }>(`/forum/questions${mine ? '/mine' : ''}?${query}`)
   return <div className="space-y-5">
-    <div className="grid gap-4 sm:grid-cols-2"><Select label="Kategori" value={category} onChange={e => setParams({ ...(mine ? { mine: '1' } : {}), ...(e.target.value ? { categoryId: e.target.value } : {}) })}><option value="">Tüm kategoriler</option>{categories.data?.categories.map(c => <option key={c.id} value={c.id}>{c.labelTr}</option>)}</Select>
-    <label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={mine} onChange={e => setParams({ ...(category ? { categoryId: category } : {}), ...(e.target.checked ? { mine: '1' } : {}) })} />Yalnızca sorularım</label></div>
+    <SearchForm key={keyword} keyword={keyword} search={q => setParams({ ...(category ? { categoryId: category } : {}), ...(mine ? { mine: '1' } : {}), ...(q ? { q } : {}) })} />
+    <div className="grid gap-4 sm:grid-cols-2"><Select label="Kategori" value={category} onChange={e => setParams({ ...(keyword ? { q: keyword } : {}), ...(mine ? { mine: '1' } : {}), ...(e.target.value ? { categoryId: e.target.value } : {}) })}><option value="">Tüm kategoriler</option>{categories.data?.categories.map(c => <option key={c.id} value={c.id}>{c.labelTr}</option>)}</Select>
+    <label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={mine} onChange={e => setParams({ ...(keyword ? { q: keyword } : {}), ...(category ? { categoryId: category } : {}), ...(e.target.checked ? { mine: '1' } : {}) })} />Yalnızca sorularım</label></div>
     <ResourceState {...categories} /><ResourceState {...list} />
-    {list.data && <>{!list.data.questions.length && <p role="status">Bu filtrelerde henüz soru yok.</p>}<div className="grid gap-4">{list.data.questions.map(q => <Card key={q.id}><h2 className="text-xl font-bold"><Link className="text-brand underline" to={`/forum/${q.id}`}>{q.title}</Link></h2><p className="mt-2 text-sm text-muted">{q.category?.labelTr} · {q.author.displayName} · {date(q.createdAt)}</p>{q.hiddenAt && <p>Bu gönderi moderasyon nedeniyle gizli.</p>}<p className="mt-3 whitespace-pre-wrap">{q.body.slice(0, 240)}{q.body.length > 240 ? '…' : ''}</p></Card>)}</div><Pagination page={list.data.page} hasMore={list.data.hasMore} change={page => setParams({ ...(category ? { categoryId: category } : {}), ...(mine ? { mine: '1' } : {}), page: String(page) })} /></>}
+    {list.data && <>{!list.data.questions.length && <p role="status">Bu filtrelerde henüz soru yok.</p>}<div className="grid gap-4">{list.data.questions.map(q => <Card key={q.id}><h2 className="text-xl font-bold"><Link className="text-brand underline" to={`/forum/${q.id}`}>{q.title}</Link></h2><p className="mt-2 text-sm text-muted">{q.category?.labelTr} · {q.author.displayName} · {date(q.createdAt)}</p>{q.hiddenAt && <p>Bu gönderi moderasyon nedeniyle gizli.</p>}<p className="mt-3 whitespace-pre-wrap">{q.body.slice(0, 240)}{q.body.length > 240 ? '…' : ''}</p></Card>)}</div><Pagination page={list.data.page} hasMore={list.data.hasMore} change={page => setParams({ ...(keyword ? { q: keyword } : {}), ...(category ? { categoryId: category } : {}), ...(mine ? { mine: '1' } : {}), page: String(page) })} /></>}
   </div>
+}
+function SearchForm({ keyword, search }: { keyword: string; search: (q: string) => void }) {
+  const [draft, setDraft] = useState(keyword)
+  return <form role="search" aria-label="Forum araması" className="space-y-3" onSubmit={e => { e.preventDefault(); search(draft.trim()) }}>
+    <Input label="Forumda ara" type="search" value={draft} maxLength={200} onChange={e => setDraft(e.target.value)} placeholder="Başlık, soru veya yanıtta ara" />
+    <div className="flex gap-3"><Button type="submit">Ara</Button><Button variant="secondary" onClick={() => { setDraft(''); search('') }}>Aramayı temizle</Button></div>
+  </form>
 }
 function QuestionDetail() {
   const { id } = useParams()
