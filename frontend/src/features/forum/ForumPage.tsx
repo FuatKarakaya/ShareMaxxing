@@ -1,3 +1,4 @@
+import { ReportButton } from '../content/ReportButton'
 import { useState } from 'react'
 import { Link, Route, Routes, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { PageLayout } from '../../components/layout/PageLayout'
@@ -60,6 +61,10 @@ function QuestionDetail() {
   const q = detail.data.question
   return <div className="space-y-6"><Card><h2 className="text-2xl font-bold">{q.title}</h2><p className="my-3 text-sm text-muted">{q.category?.labelTr} · {q.author.displayName} · {date(q.createdAt)}</p>{q.hiddenAt && <Alert variant="info" title="Gönderi gizli" />}<p className="whitespace-pre-wrap">{q.body}</p>
     {q.authorId === session?.user.id && <div className="mt-5 flex flex-wrap items-start gap-3"><LinkButton to={`/forum/${q.id}/duzenle`} variant="secondary">Soruyu düzenle</LinkButton><DeleteAction onDelete={async () => { await contentRequest(`/forum/posts/${q.id}`, { method: 'DELETE' }); navigate('/forum') }}>Soruyu sil</DeleteAction></div>}
+    {!q.hiddenAt && <div className="mt-4 space-y-2">
+      <ReportButton key={q.id} targetType="POST" targetId={q.id} label="Soruyu bildir" />
+      {q.authorId !== session?.user.id && <ReportButton key={q.authorId} targetType="USER" targetId={q.authorId} label="Yazarı bildir" />}
+    </div>}
     </Card><h2 className="text-xl font-bold">Yanıtlar</h2>
     {!detail.data.answers.length && <p>Henüz yanıt yok. İlk yanıtı sen yaz.</p>}
     {detail.data.answers.map(a => <Answer key={a.id} post={a} own={a.authorId === session?.user.id} reload={detail.reload} />)}
@@ -76,6 +81,10 @@ function Answer({ post, own, reload }: { post: Post; own: boolean; reload: () =>
   return <article aria-label={`${post.author.displayName} yanıtı`}><Card><p className="mb-3 text-sm text-muted">{post.author.displayName} · {date(post.createdAt)}</p>{post.hiddenAt && <p>Bu yanıt moderasyon nedeniyle gizli.</p>}
     {editing ? <Form onSubmit={e => { e.preventDefault(); void action.run(async () => { await contentRequest(`/forum/posts/${post.id}`, { method: 'PATCH', body: JSON.stringify({ body }) }); setEditing(false); reload() }) }}><Textarea label="Yanıtı düzenle" value={body} onChange={e => setBody(e.target.value)} required maxLength={6000} /><div className="flex gap-3"><Button type="submit" loading={action.busy}>Kaydet</Button><Button variant="secondary" onClick={() => { setEditing(false); setBody(post.body) }}>Vazgeç</Button></div></Form> : <p className="whitespace-pre-wrap">{post.body}</p>}
     {own && !editing && <div className="mt-4 flex flex-wrap items-start gap-3"><Button variant="secondary" onClick={() => setEditing(true)}>Yanıtı düzenle</Button><DeleteAction onDelete={async () => { await contentRequest(`/forum/posts/${post.id}`, { method: 'DELETE' }); reload() }}>Yanıtı sil</DeleteAction></div>}{action.error && <Alert variant="error" title="Yanıt kaydedilemedi">{action.error}</Alert>}
+    {!post.hiddenAt && !editing && <div className="mt-4 space-y-2">
+      <ReportButton targetType="POST" targetId={post.id} label="Yanıtı bildir" />
+      {!own && <ReportButton targetType="USER" targetId={post.authorId} label="Yanıt yazarını bildir" />}
+    </div>}
   </Card></article>
 }
 function EditQuestion() {

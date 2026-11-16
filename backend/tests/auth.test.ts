@@ -15,6 +15,7 @@ const password = 'Test password 123 ';
 let passwordHash: string;
 let email: string;
 let api: ReturnType<typeof request>;
+const sendCode = jest.fn(async (_email: string, _code: string) => {});
 
 beforeAll(async () => {
   process.env.JWT_SECRET = jwtSecret;
@@ -23,11 +24,13 @@ beforeAll(async () => {
 
 beforeEach(() => {
   email = `${prefix}-${randomUUID()}@itu.edu.tr`;
-  api = request(createApp());
+  sendCode.mockClear();
+  api = request(createApp(sendCode));
 });
 
 afterAll(async () => {
   try {
+    await prisma.emailVerificationCode.deleteMany({ where: { user: { email: { startsWith: prefix } } } });
     await prisma.user.deleteMany({ where: { email: { startsWith: prefix } } });
   } finally {
     await prisma.$disconnect();
@@ -180,4 +183,65 @@ test('login attempts are rate limited while health stays available', async () =>
   expect(response.headers['retry-after']).toBeTruthy();
   await api.get('/health').expect(200);
   await me().expect(401);
+});
+
+const verify = (code: string) => post('verification/verify', { email, code });
+const resend = (address = email) => post('verification/resend', { email: address });
+const sentCode = () => sendCode.mock.calls.at(-1)![1];
+const wrongCode = (code: string) => code === '000000' ? '000001' : '000000';
+
+test('sign-up sends a code privately and only that code enables login once', async () => {
+  const { body } = await signup().expect(201);
+  expect(body.verificationEmailSent).toBe(true);
+  expect(sendCode).toHaveBeenCalledWith(email, expect.stringMatching(/^\d{6}$/));
+  expect(body).not.toHaveProperty('code');
+  const stored = await prisma.emailVerificationCode.findUniqueOrThrow({ where: { userId: body.user.id } });
+  expect(stored.codeHash).toMatch(/^[a-f0-9]{64}$/);
+  await login().expect(403);
+  await verify(wrongCode(sentCode())).expect(400);
+  await verify(sentCode()).expect(204);
+  await verify(sentCode()).expect(400);
+  expect(await prisma.emailVerificationCode.findUnique({ where: { userId: body.user.id } })).toBeNull();
+  await login().expect(200);
+});
+
+test('locks out the current code after five failures and replaces it on resend', async () => {
+  const { body } = await signup().expect(201);
+  const where = { userId: body.user.id };
+  const requests = Array.from({ length: 6 }, () => verify(wrongCode(sentCode())));
+  expect((await Promise.all(requests)).map(response => response.status)).toEqual(Array(6).fill(400));
+  expect((await prisma.emailVerificationCode.findUniqueOrThrow({ where })).failedAttempts).toBe(5);
+  await verify(sentCode()).expect(400);
+  await resend().expect(202);
+  expect(sendCode).toHaveBeenCalledTimes(1);
+  await prisma.emailVerificationCode.update({ where, data: { expiresAt: new Date(Date.now() - 1) } });
+  await resend().expect(202);
+  expect(sendCode).toHaveBeenCalledTimes(2);
+  expect((await prisma.emailVerificationCode.findUniqueOrThrow({ where })).failedAttempts).toBe(0);
+  await verify(sentCode()).expect(204);
+});
+
+test('expired and suspended accounts cannot be verified and resend does not reveal account existence', async () => {
+  const { body } = await signup().expect(201);
+  await prisma.emailVerificationCode.update({ where: { userId: body.user.id }, data: { expiresAt: new Date(0) } });
+  await verify(sentCode()).expect(400);
+  const unknown = await resend('unknown@itu.edu.tr').expect(202);
+  await prisma.user.update({ where: { id: body.user.id }, data: { status: 'SUSPENDED' } });
+  const suspended = await resend().expect(202);
+  expect(suspended.body).toEqual(unknown.body);
+  expect(sendCode).toHaveBeenCalledTimes(1);
+  await verify(sentCode()).expect(400);
+});
+
+test('mail failure keeps registration recoverable by resending', async () => {
+  sendCode.mockRejectedValueOnce(new Error('unavailable'));
+  const warning = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  try {
+    const { body } = await signup().expect(201);
+    expect(body.verificationEmailSent).toBe(false);
+    await signup().expect(409);
+    await prisma.emailVerificationCode.update({ where: { userId: body.user.id }, data: { expiresAt: new Date(0) } });
+    await resend().expect(202);
+    await verify(sentCode()).expect(204);
+  } finally { warning.mockRestore(); }
 });

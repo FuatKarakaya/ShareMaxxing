@@ -21,6 +21,7 @@ beforeEach(async () => {
     const body = init?.body ? JSON.parse(String(init.body)) : {}
     calls.push({ path: `${path}${url.search}`, method, body, headers: new Headers(init?.headers) })
     if (path === '/api/auth/login') return failLogin ? json({ error: { code: 'INVALID_CREDENTIALS', message: 'Adres veya şifre hatalı.' } }, 401) : json({ accessToken: 'test-token', user: student })
+    if (path === '/api/reports' && method === 'POST') return json({ report: { id: 'report-1', status: 'ACTIVE' } }, 201)
     if (path === '/api/forum/categories') return json({ categories: [category] })
     if (path === '/api/forum/questions' && method === 'POST') { question = { ...question, ...body }; return json({ question }, 201) }
     if (path === '/api/forum/posts/question-1' && method === 'PATCH') { question = { ...question, ...body }; return json({ post: question }) }
@@ -115,4 +116,19 @@ test('submits keyword search, preserves filters on pagination, and clears it', a
   await user.click(screen.getByRole('button', { name: /temizle/ }))
   await waitFor(() => expect(screen.getByRole('searchbox')).toHaveValue(''))
   expect(calls.at(-1)?.path).toBe('/api/forum/questions?page=1&categoryId=category-1')
+})
+
+test('can cancel or submit a report from the question detail', async () => {
+  const user = userEvent.setup()
+  open('/forum/question-1')
+  await user.click(await screen.findByRole('button', { name: 'Soruyu bildir' }))
+  await user.click(screen.getByRole('button', { name: 'Vazgeç' }))
+  expect(calls.some(c => c.path === '/api/reports')).toBe(false)
+  await user.click(screen.getByRole('button', { name: 'Soruyu bildir' }))
+  await user.type(screen.getByLabelText(/Bildirim nedeni/), 'Moderasyon kontrolü')
+  await user.click(screen.getByRole('button', { name: 'Bildirimi gönder' }))
+  expect(await screen.findByText('Bildiriminiz moderasyon ekibine iletildi.')).toBeVisible()
+  const call = calls.find(c => c.path === '/api/reports')
+  expect(call?.headers.get('Authorization')).toBe('Bearer test-token')
+  expect(call?.body).toEqual({ targetType: 'POST', targetId: 'question-1', reason: 'Moderasyon kontrolü' })
 })

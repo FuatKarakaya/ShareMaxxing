@@ -1,14 +1,12 @@
-# Authentication backend — WBS-1.1 and WBS-2.1
+# Authentication backend — WBS-1.1, WBS-1.2 and WBS-2.1
 
 Implemented: İTÜ-only sign-up, salted scrypt password hashing, verified-account
 login, one-hour JWT access tokens, and authentication middleware that reads the
 current user status from PostgreSQL on every protected request.
 
-WBS-1.2 (email code generation, Nodemailer delivery, verification and resend) is
-not implemented yet. New accounts stay unverified and cannot log in. No endpoint
-allows clients to mark themselves verified. Use the local verified demo account
-to test login until WBS-1.2 is connected. Role authorization (WBS-2.2) and login
-pages (WBS-2.3) remain separate work.
+Sign-up sends an email verification code through Nodemailer. New accounts stay
+unverified until a valid code is submitted. Registration and verification pages
+are tracked in WBS-1.3.
 
 ## Local setup
 
@@ -118,7 +116,9 @@ All request bodies are JSON. Errors use
 
 | Endpoint | Body / header | Success | Main errors |
 | --- | --- | --- | --- |
-| `POST /api/auth/signup` | `email`, `password`, `displayName` | 201 `{ user, verificationRequired: true }` | 400 invalid input, 409 duplicate email |
+| `POST /api/auth/signup` | `email`, `password`, `displayName` | 201 `{ user, verificationRequired: true, verificationEmailSent }` | 400 invalid input, 409 duplicate email |
+| `POST /api/auth/verification/verify` | `email`, `code` (six-digit string) | 204 | 400 invalid, expired or exhausted code |
+| `POST /api/auth/verification/resend` | `email` | 202 | 400 invalid input, 429 IP limit |
 | `POST /api/auth/login` | `email`, `password` | 200 `{ accessToken, tokenType: "Bearer", expiresIn: 3600, user }` | 401 wrong credentials, 403 unverified/suspended |
 | `GET /api/auth/me` | `Authorization: Bearer <accessToken>` | 200 `{ user }` | 401 missing/invalid/expired token, 403 unverified/suspended |
 
@@ -129,7 +129,7 @@ verification fields. Passwords and hashes never appear in responses or JWTs.
 The `user` in these responses belongs to the caller; its email must not be reused
 as a public profile response.
 
-Sign-up and login each allow 30 requests per IP per 15 minutes and return 429
+Sign-up, login, verification and resend each allow 30 requests per IP per 15 minutes and return 429
 when exceeded. This initial limiter uses process-local memory. When deploying
 multiple API instances, configure a shared limiter store and the exact trusted
 proxy configuration. `/me` is not counted against login attempts.
@@ -148,6 +148,25 @@ curl -i http://localhost:3000/api/auth/signup \
   -H 'Content-Type: application/json' \
   -d '{"email":"student@itu.edu.tr","password":"example-password-123","displayName":"Öğrenci"}'
 ```
+
+Set `SMTP_URL` and `MAIL_FROM` in `backend/.env` for email delivery. For local
+development you can point `SMTP_URL` to a mail catcher such as Mailpit at
+`smtp://localhost:1025` and read the message in its web inbox. Configure a
+trusted SMTP provider and sender for real delivery.
+
+Codes expire after 10 minutes and allow at most five wrong attempts. Resending
+replaces the code and resets its attempts after a one-minute cooldown. If
+`verificationEmailSent` is false, the account still exists. Set up SMTP and
+use the resend endpoint after the cooldown.
+
+```bash
+curl -i http://localhost:3000/api/auth/verification/verify \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"student@itu.edu.tr","code":"123456"}'
+```
+
+Replace `123456` with the code from the email. To request a new code, POST
+`{"email":"student@itu.edu.tr"}` to `/api/auth/verification/resend`.
 
 Example login with a seeded account (replace the password with your `SEED_PASSWORD`):
 
