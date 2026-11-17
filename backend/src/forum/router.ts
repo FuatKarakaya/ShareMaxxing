@@ -1,12 +1,16 @@
 import { Router } from 'express';
 import { authenticate } from '../auth/middleware';
 import { prisma } from '../lib/prisma';
+import { aiSearch } from './ai-search';
 import { listQuestions, questionDetail, createQuestion, createAnswer, changePost, type ReplyEmail } from './service';
 export function createForumRouter(sendEmail?: ReplyEmail): Router {
   const router = Router();
   router.use(authenticate, (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
   router.get('/categories', async (_req, res, next) => {
     try { res.json({ categories: await prisma.forumCategory.findMany({ orderBy: { code: 'asc' } }) }); } catch (error) { next(error); }
+  });
+  router.get('/ai-search', async (req, res, next) => {
+    try { res.json(await aiSearch(res.locals.user, req.query)); } catch (error) { next(error); }
   });
   router.get('/questions/mine', async (req, res, next) => {
     try { res.json(await listQuestions(res.locals.user, req.query, true)); } catch (error) { next(error); }

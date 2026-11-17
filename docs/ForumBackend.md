@@ -19,6 +19,6 @@ Unknown fields, immutable parent/kind injection, invalid categories and answer-t
 
 A new answer creates one FORUM_REPLY in-app notification for the question author in the same transaction; self replies skip notification. Payload contains a display-safe message and internal question/answer links. Email is an injectable createForumRouter(sendEmail) integration called after commit; absent/failed delivery is logged and never rolls back the answer. Actual delivery/retries are WBS-22.2, and are not claimed implemented here. The sender receives {questionId,answerId,recipientId}; it can use the existing account service privately.
 
-No AI provider exists yet. Saves create a deduplicated AI_UNAVAILABLE human-review case without hiding content or declaring it safe. The WBS-24.1 background worker must discard stale results by updatedAt. Keyword search is documented in [ForumSearch.md](ForumSearch.md) (WBS-21.1). Votes and course-code tags remain separate tasks.
+After each save the post is checked by the AI in the background (WBS-24.1, see [AiFlagging.md](AiFlagging.md)). Unsuitable posts and failed checks get a moderation case; content is never hidden or declared safe by the AI. Keyword search is documented in [ForumSearch.md](ForumSearch.md) (WBS-21.1). Votes and course-code tags remain separate tasks.
 
 Verify from backend/: npm test; npm run build:code. Integration tests cover permissions, validation, category browsing, answer shape, notifications, email failure, hidden visibility, ownership, cascade/moderation lifecycle and pagination.

@@ -447,11 +447,26 @@ model ForumPost {
   answers         ForumPost[]      @relation("PostAnswers")
   category        ForumCategory?   @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   moderationCases ModerationCase[]
+  embedding       ForumPostEmbedding?
 
   // forum_browse_idx (partial) and forum_keyword_idx (GIN, expression): raw SQL, migration 2.
   @@index([parentPostId, createdAt], map: "forum_answers_idx")
   @@index([authorId], map: "forum_author_idx")
   @@map("forum_posts")
+}
+
+// Optional AI forum search (WBS-23.2, docs/AiForumSearch.md): one embedding
+// vector per post. Deleting the post deletes its vector.
+model ForumPostEmbedding {
+  postId           String   @id @map("post_id") @db.Uuid
+  model            String
+  vector           Float[]
+  contentUpdatedAt DateTime @map("content_updated_at") @db.Timestamptz(6)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  post ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("forum_post_embeddings")
 }
 
 // ───────────────────── 4.7 Notifications ─────────────────────

@@ -16,7 +16,7 @@ Listings return id, authorId, districtId, listingType, title, description, conta
 
 ## Integration boundaries
 
-WBS-24.1's AI provider is not implemented here. Saves persist a deduplicated AI_UNAVAILABLE moderation case for human review; content stays visible and is never labelled safe. The future background worker must discard stale results using updatedAt and preserve human authority. No external AI call is made inside the request or transaction.
+After each save the listing is checked by the AI in the background (WBS-24.1, see [AiFlagging.md](AiFlagging.md)). Unsuitable listings and failed checks get a moderation case for human review; content stays visible and is never labelled safe. No external AI call is made inside the request or transaction.
 
 ## Verify
 
