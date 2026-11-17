@@ -1,6 +1,7 @@
 import { Prisma, type BookingStatus } from '@prisma/client';
 import { ApiError } from '../lib/errors';
 import { prisma } from '../lib/prisma';
+import { markBooked, refreshWaitlist, seatsOfferedToOthers } from '../waitlist/service';
 
 // A PENDING_PAYMENT booking holds its seat this long while the passenger pays (database plan 4.2).
 const RESERVATION_MINUTES = 15;
@@ -72,6 +73,8 @@ export async function createBooking(passengerId: string, tripId: string) {
       throw new ApiError(409, 'OWN_TRIP', 'Kendi yolculuğunuza rezervasyon yapamazsınız.');
     }
     await expireStaleReservations(tx, tripId, now);
+    // Freed seats go to the waitlist first (WBS-8.1).
+    await refreshWaitlist(tx, trip, now);
     const live = await tx.booking.findMany({
       where: { tripId, status: { in: SEAT_HOLDING } },
       select: { passengerId: true },
@@ -79,10 +82,11 @@ export async function createBooking(passengerId: string, tripId: string) {
     if (live.some(booking => booking.passengerId === passengerId)) {
       throw new ApiError(409, 'ALREADY_BOOKED', 'Bu yolculukta zaten bir rezervasyonunuz var.');
     }
-    if (live.length >= trip.seatCapacity) {
+    // A seat offered to someone on the waitlist is not free for anyone else.
+    if (live.length + await seatsOfferedToOthers(tx, tripId, passengerId, now) >= trip.seatCapacity) {
       throw new ApiError(409, 'TRIP_FULL', 'Bu yolculukta boş koltuk kalmadı.');
     }
-    return tx.booking.create({
+    const booking = await tx.booking.create({
       data: {
         tripId,
         passengerId,
@@ -91,6 +95,8 @@ export async function createBooking(passengerId: string, tripId: string) {
       },
       select: bookingSelect,
     });
+    await markBooked(tx, tripId, passengerId);
+    return booking;
   });
   return toResponse(row);
 }
@@ -126,11 +132,14 @@ export async function cancelBooking(passengerId: string, bookingId: string) {
       throw new ApiError(409, 'TRIP_ALREADY_STARTED', 'Yolculuk başladıktan sonra rezervasyon iptal edilemez.');
     }
     // TODO(WBS-11.1): refund the held payment of a CONFIRMED booking here, in this transaction.
-    return tx.booking.update({
+    const cancelled = await tx.booking.update({
       where: { id: bookingId },
       data: { status: 'CANCELLED', cancelledAt: now },
       select: bookingSelect,
     });
+    // The freed seat is offered to the first person on the waitlist (UC-07 A1).
+    await refreshWaitlist(tx, trip, now);
+    return cancelled;
   });
   return toResponse(row);
 }
