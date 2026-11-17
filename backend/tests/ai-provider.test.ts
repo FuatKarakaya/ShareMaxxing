@@ -1,4 +1,4 @@
-import { AiUnavailableError, chatJson, resetAiUsage } from '../src/ai/provider';
+import { AiUnavailableError, chatJson, embed, resetAiUsage } from '../src/ai/provider';
 
 const BASE_URL = 'https://ai.example.test/v1';
 const messages = [{ role: 'user' as const, content: 'Reply with a JSON object.' }];
@@ -101,4 +101,27 @@ test('stops calling the provider after the daily limit', async () => {
   await chatJson(messages);
   expect(await failure()).toBe('LIMIT_REACHED');
   expect(fetchMock).toHaveBeenCalledTimes(2);
+});
+
+describe('embeddings', () => {
+  beforeEach(() => { process.env.AI_EMBEDDING_MODEL = 'test-embedding'; });
+  afterAll(() => { delete process.env.AI_EMBEDDING_MODEL; });
+
+  test('returns one vector per text, in the order of the texts', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ data: [{ index: 1, embedding: [0, 1] }, { index: 0, embedding: [1, 0] }] })));
+    expect(await embed(['a', 'b'])).toEqual({ model: 'test-embedding', vectors: [[1, 0], [0, 1]] });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe(`${BASE_URL}/embeddings`);
+    expect(JSON.parse(String(init?.body))).toEqual({ model: 'test-embedding', input: ['a', 'b'] });
+  });
+
+  test('a missing model, a missing vector or a non-number is reported as unavailable', async () => {
+    const reason = (promise: Promise<unknown>) => promise.then(() => 'none', (error: AiUnavailableError) => error.reason);
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ data: [] })));
+    expect(await reason(embed(['a']))).toBe('INVALID_RESPONSE');
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ data: [{ index: 0, embedding: ['x'] }] })));
+    expect(await reason(embed(['a']))).toBe('INVALID_RESPONSE');
+    delete process.env.AI_EMBEDDING_MODEL;
+    expect(await reason(embed(['a']))).toBe('NOT_CONFIGURED');
+  });
 });

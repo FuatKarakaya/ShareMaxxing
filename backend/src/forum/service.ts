@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import { ApiError } from '../lib/errors';
 import { invalid, object, text, uuid, page } from '../content/validation';
 import { reviewContent } from '../content/review';
+import { indexInBackground } from './ai-search';
 type Actor = Pick<User, 'id' | 'role'>;
 const include = { author: { select: { id: true, displayName: true } }, category: true };
 const missing = () => new ApiError(404, 'NOT_FOUND', 'Gönderi bulunamadı.');
@@ -55,6 +56,7 @@ export async function createQuestion(actor: Actor, value: unknown) {
     return tx.forumPost.create({ data: { authorId: actor.id, kind: 'QUESTION', title: data.title!, body: data.body!, categoryId: data.categoryId! }, include });
   });
   reviewContent({ targetPostId: row.id });
+  indexInBackground(row.id);
   return row;
 }
 export type ReplyEvent = { questionId: string; answerId: string; recipientId: string };
@@ -73,6 +75,7 @@ export async function createAnswer(actor: Actor, id: string, value: unknown, sen
     return { answer, event };
   });
   reviewContent({ targetPostId: result.answer.id });
+  indexInBackground(result.answer.id);
   if (result.event) {
     // Delivery is after commit, so provider failure cannot roll back a published answer.
     try {
@@ -102,6 +105,9 @@ export async function changePost(actor: Actor, id: string, value?: unknown, remo
     await tx.forumPost.delete({ where: { id } });
     return null;
   });
-  if (changed) reviewContent({ targetPostId: id });
+  if (changed) {
+    reviewContent({ targetPostId: id });
+    indexInBackground(id);
+  }
   return changed;
 }
