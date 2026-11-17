@@ -82,3 +82,14 @@ can be run again at any time.
 indexing on save and edit, removal on delete, answer matches leading to their
 question, hidden posts, the empty result, the "unavailable" answer and input
 checks.
+
+## Search box — WBS-23.3
+
+The forum list page (`/forum`) has a box "Sorunu kendi cümlelerinle sor" above
+the keyword search. The results link to their questions; an answer match is
+marked "Bir yanıtta". When nothing related is found, or AI search is
+unavailable, the box says so and offers `Anahtar kelimeyle ara`, which runs the
+normal keyword search with the same words.
+
+Code: `frontend/src/features/forum/AiSearchBox.tsx`; tests:
+`frontend/tests/ai-search.test.tsx`.
