@@ -16,13 +16,15 @@
     "db:test:reset": "tsx scripts/database.ts test:reset",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
-    "db:seed:mock": "tsx prisma/seed-mock.ts"
+    "db:seed:mock": "tsx prisma/seed-mock.ts",
+    "ledger:check": "tsx scripts/ledger-check.ts"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",
     "dotenv": "^16.4.7",
     "express": "^4.21.0",
     "express-rate-limit": "^7.5.0",
+    "iyzipay": "^2.0.71",
     "jsonwebtoken": "^9.0.2",
     "nodemailer": "^10.5.0"
   },
