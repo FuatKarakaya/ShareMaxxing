@@ -115,6 +115,9 @@ beforeEach(async () => {
       bookings = [pendingBooking, ...bookings]
       return json({ booking: pendingBooking }, 201)
     }
+    if (url.pathname === '/api/waitlist' && method === 'GET') {
+      return json({ entries: [] })
+    }
     if (url.pathname === '/api/bookings' && method === 'GET') {
       return json({ bookings })
     }
@@ -181,7 +184,7 @@ test('does not offer booking to the driver, on a full trip or on a cancelled tri
 
   detailTrip = { ...openTrip, freeSeats: 0, occupiedSeats: 3, isFull: true }
   open('/yolculuklar/trip-open')
-  await screen.findByRole('button', { name: 'Yolculuk dolu' })
+  await screen.findByRole('button', { name: 'Bekleme listesine katıl' })
   expect(screen.queryByRole('button', { name: 'Rezervasyon yap' })).not.toBeInTheDocument()
   cleanup()
 

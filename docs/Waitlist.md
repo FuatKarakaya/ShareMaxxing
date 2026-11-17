@@ -79,3 +79,17 @@ deadline.
 - The notification is written straight into the `notifications` table. Once
   the notification service (#52) is merged, it should use
   `createNotification(..., tx)`.
+
+## Screens — WBS-8.2
+
+- Trip detail page (`/yolculuklar/:tripId`): on a full trip a passenger sees
+  `Bekleme listesine katıl`. On the list they see their place and
+  `Bekleme listesinden çık`. When a seat is held for them they see until when,
+  the `Rezervasyon yap` button and the leave button. The driver sees none of
+  these.
+- "Rezervasyonlarım" (`/yolculuklar/rezervasyonlarim`) has a
+  "Bekleme listelerim" section with each list, the place in line or the offer
+  deadline.
+
+The code is in `frontend/src/features/waitlist/WaitlistScreens.tsx`, the tests
+in `frontend/tests/waitlist.test.tsx`.
