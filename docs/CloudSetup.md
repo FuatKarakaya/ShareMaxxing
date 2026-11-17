@@ -33,6 +33,7 @@ API only when `backend/` changes.
 | `FRONTEND_ORIGIN` | API | Address of the website. The API accepts browser calls from this address only |
 | `TRUST_PROXY_HOPS` | API | `1`, so the login rate limit sees the visitor's address instead of Render's proxy |
 | `VITE_API_BASE_URL` | Website | Address of the API followed by `/api` |
+| `AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL` | API | AI provider, see [AiProvider.md](AiProvider.md). Added by hand under **Environment** in the Render Dashboard, not through `render.yaml` |
 
 No secret is stored in the repository. `VITE_*` values are visible in the
 browser, so they must never hold a secret.
