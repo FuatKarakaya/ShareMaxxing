@@ -4,7 +4,9 @@ Implemented: book a seat, list my bookings, cancel a booking. Seat counts stay
 correct when several people book the same trip at the same moment.
 
 Not in this part: payment and hold (WBS-10.1), refunds (WBS-11.1), booking
-screens (WBS-7.2) and the optional waitlist (WBS-8.1).
+screens (WBS-7.2). The optional waitlist (WBS-8.1) is in [Waitlist.md](Waitlist.md):
+a freed seat is offered to the waitlist first, and a seat held for someone on it
+is not free for others.
 
 All endpoints need a logged-in, verified user (`Authorization: Bearer <token>`,
 see [AuthBackend.md](AuthBackend.md)). Errors use the same shape as the auth
