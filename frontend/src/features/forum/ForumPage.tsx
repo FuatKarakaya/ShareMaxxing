@@ -12,6 +12,7 @@ import { StudentSignIn } from '../content/StudentSignIn'
 import { clearStudentSession, contentRequest, useStudentSession } from '../content/session'
 import { useAction, useResource } from '../content/hooks'
 import { DeleteAction, Pagination, ResourceState } from '../content/ContentControls'
+import { AiSearchBox } from './AiSearchBox'
 type Category = { id: string; code: string; labelTr: string }
 type Post = { id: string; authorId: string; title: string | null; body: string; hiddenAt: string | null; createdAt: string; author: { id: string; displayName: string }; category: Category | null }
 type Detail = { question: Post; answers: Post[]; page: number; hasMore: boolean }
@@ -35,6 +36,7 @@ function QuestionList() {
   const query = new URLSearchParams({ page: String(current), ...(keyword ? { q: keyword } : {}), ...(category ? { categoryId: category } : {}) })
   const list = useResource<{ questions: Post[]; page: number; hasMore: boolean }>(`/forum/questions${mine ? '/mine' : ''}?${query}`)
   return <div className="space-y-5">
+    <AiSearchBox onKeywordSearch={q => setParams({ ...(category ? { categoryId: category } : {}), ...(mine ? { mine: '1' } : {}), ...(q ? { q } : {}) })} />
     <SearchForm key={keyword} keyword={keyword} search={q => setParams({ ...(category ? { categoryId: category } : {}), ...(mine ? { mine: '1' } : {}), ...(q ? { q } : {}) })} />
     <div className="grid gap-4 sm:grid-cols-2"><Select label="Kategori" value={category} onChange={e => setParams({ ...(keyword ? { q: keyword } : {}), ...(mine ? { mine: '1' } : {}), ...(e.target.value ? { categoryId: e.target.value } : {}) })}><option value="">Tüm kategoriler</option>{categories.data?.categories.map(c => <option key={c.id} value={c.id}>{c.labelTr}</option>)}</Select>
     <label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={mine} onChange={e => setParams({ ...(keyword ? { q: keyword } : {}), ...(category ? { categoryId: category } : {}), ...(e.target.checked ? { mine: '1' } : {}) })} />Yalnızca sorularım</label></div>

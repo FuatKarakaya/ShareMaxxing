@@ -8,6 +8,7 @@ import { ResourceState } from '../content/ContentControls'
 import { useAction, useResource } from '../content/hooks'
 import { contentRequest } from '../content/session'
 import { formatDateTime, formatPriceTl } from '../trips/format'
+import { MyWaitlist } from '../waitlist/WaitlistScreens'
 
 type City = { code: number; name: string }
 type BookingStatus = 'PENDING_PAYMENT' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'EXPIRED'
@@ -149,6 +150,7 @@ export function MyBookingsList() {
           </div>
         </>
       )}
+      <MyWaitlist />
     </div>
   )
 }

@@ -12,7 +12,8 @@ import { ResourceState } from '../content/ContentControls'
 import { StudentSignIn } from '../content/StudentSignIn'
 import { useAction, useResource } from '../content/hooks'
 import { clearStudentSession, contentRequest, useStudentSession } from '../content/session'
-import { BookSeatAction, MyBookingsList } from '../bookings/BookingScreens'
+import { MyBookingsList } from '../bookings/BookingScreens'
+import { SeatActions } from '../waitlist/WaitlistScreens'
 import { formatDateTime, formatPriceTl } from './format'
 
 type City = { code: number; name: string }
@@ -286,14 +287,7 @@ function TripDetail() {
           <ReportButton key={trip.id} targetType="TRIP" targetId={trip.id} label="Yolculuğu bildir" />
         </div>
 
-        {!isDriver && trip.isFull && (
-          <div className="mt-6 space-y-3">
-            <p role="status">Bu yolculuk dolu; koltuk rezervasyonu yapılamaz.</p>
-            <Button disabled>Yolculuk dolu</Button>
-          </div>
-        )}
-
-        {!isDriver && !trip.isFull && trip.status === 'PUBLISHED' && <BookSeatAction tripId={trip.id} />}
+        {!isDriver && trip.status === 'PUBLISHED' && <SeatActions tripId={trip.id} isFull={trip.isFull} />}
       </Card>
 
       <Card>
