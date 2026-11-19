@@ -207,6 +207,8 @@ model User {
   @@map("users")
 }
 
+// UNUSED: payments use a normal iyzico sandbox account with the Checkout Form, not the
+// iyzico marketplace, so drivers are not registered as submerchants. Kept to avoid a migration.
 model DriverSubmerchant {
   userId               String   @id @map("user_id") @db.Uuid
   iyzicoSubmerchantKey String   @unique @map("iyzico_submerchant_key")
