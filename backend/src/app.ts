@@ -5,6 +5,7 @@ import { createAuthRouter } from './auth/router';
 import { createBookingRouter } from './bookings/router';
 import { createForumRouter } from './forum/router';
 import { createReportRouter } from './reports/router';
+import { profilesRouter } from './profiles/router';
 import { allowOrigin } from './lib/cors';
 import { errorHandler } from './lib/errors';
 import { createCitiesRouter, createTripRouter } from './trips/router';
@@ -22,6 +23,7 @@ export function createApp(sendVerificationCode?: SendVerificationCode) {
     res.status(200).json({ status: 'ok' });
   });
   app.use('/api/reports', createReportRouter());
+  app.use('/api/profiles', profilesRouter);
   app.use('/api/forum', createForumRouter());
   app.use('/api/auth', createAuthRouter(sendVerificationCode));
   app.use('/api/bookings', createBookingRouter());
