@@ -12,6 +12,7 @@ type PublicProfile = {
   ridesAsPassenger: number;
   ratingCount: number;
   averageRating: number | null;
+  recentRatings: { score: number; review: string | null }[];
 };
 
 export const profilesRouter = Router();
@@ -26,21 +27,28 @@ profilesRouter.get('/:id', async (req, res, next) => {
     // Return aggregate history only. Booking IDs, passenger identities and
     // funded-seat details must never appear on a public profile.
     const [profile] = await prisma.$queryRaw<PublicProfile[]>`
+      WITH received AS (
+        SELECT r.score, r.review, r.created_at, r.booking_id, b.sponsorship_request_id
+        FROM revealed_ride_ratings r
+        JOIN bookings b ON b.id = r.booking_id
+        JOIN trips t ON t.id = b.trip_id
+        WHERE b.status = 'COMPLETED' AND (
+          (r.direction = 'PASSENGER_TO_DRIVER' AND t.driver_id = ${id}::uuid)
+          OR (r.direction = 'DRIVER_TO_PASSENGER' AND b.passenger_id = ${id}::uuid
+              AND b.sponsorship_request_id IS NULL)
+        )
+      )
       SELECT u.id, u.display_name AS "displayName", u.bio,
         (SELECT count(*)::int FROM trips
          WHERE driver_id = u.id AND status = 'COMPLETED') AS "ridesAsDriver",
         (SELECT count(DISTINCT trip_id)::int FROM bookings
          WHERE passenger_id = u.id AND status = 'COMPLETED') AS "ridesAsPassenger",
-        ratings.count AS "ratingCount", ratings.average AS "averageRating"
+        (SELECT count(*)::int FROM received) AS "ratingCount",
+        (SELECT round(avg(score), 2)::float8 FROM received) AS "averageRating",
+        ARRAY(SELECT json_build_object('score', score, 'review', review)
+              FROM received WHERE sponsorship_request_id IS NULL
+              ORDER BY created_at DESC, booking_id LIMIT 20)::json[] AS "recentRatings"
       FROM users u
-      CROSS JOIN LATERAL (
-        SELECT count(*)::int AS count, round(avg(r.score), 1)::float8 AS average
-        FROM revealed_ride_ratings r
-        JOIN bookings b ON b.id = r.booking_id
-        JOIN trips t ON t.id = b.trip_id
-        WHERE (r.direction = 'PASSENGER_TO_DRIVER' AND t.driver_id = u.id)
-           OR (r.direction = 'DRIVER_TO_PASSENGER' AND b.passenger_id = u.id)
-      ) ratings
       WHERE u.id = ${id}::uuid AND u.status = 'ACTIVE' AND u.email_verified_at IS NOT NULL
     `;
     if (!profile) throw new ApiError(404, 'PROFILE_NOT_FOUND', 'Profil bulunamadı.');
