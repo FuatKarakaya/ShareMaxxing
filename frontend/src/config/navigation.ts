@@ -2,6 +2,7 @@ import type { ComponentType } from 'react'
 import { TripsPage } from '../features/trips/TripsPage'
 import { HousingPage } from '../features/housing/HousingPage'
 import { ForumPage } from '../features/forum/ForumPage'
+import { ProfilePage } from '../features/profiles/ProfilePage'
 
 type Section = { path: string; title: string; description: string; symbol: string; accent: string; page?: ComponentType }
 export const sections: Section[] = [
@@ -35,5 +36,13 @@ export const sections: Section[] = [
     description: 'Derslerden kampüs yaşamına, sorularını ve bildiklerini toplulukla paylaş.',
     symbol: '☰',
     accent: 'bg-violet-100 text-violet-900',
+  },
+  {
+    path: '/profil',
+    page: ProfilePage,
+    title: 'Profilim',
+    description: 'Profilini düzenle, yolculuk geçmişini ve değerlendirmelerini gör.',
+    symbol: '◎',
+    accent: 'bg-slate-100 text-slate-900',
   },
 ]

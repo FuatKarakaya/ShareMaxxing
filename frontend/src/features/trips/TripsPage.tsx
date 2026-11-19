@@ -221,7 +221,7 @@ function TripSearchResults({ path }: { path: string }) {
                   )}
                 </div>
                 <p className="mt-2 text-sm text-muted">
-                  Sürücü: {trip.driver.displayName} · Kalkış: {formatDateTime(trip.departureAt)} · Ücret: {formatPriceTl(trip.priceMinor)}
+                  Sürücü: <Link className="text-brand underline" to={`/profil/${trip.driver.id}`}>{trip.driver.displayName}</Link> · Kalkış: {formatDateTime(trip.departureAt)} · Ücret: {formatPriceTl(trip.priceMinor)}
                 </p>
                 <p className="mt-1 text-sm text-muted">
                   {trip.freeSeats} / {trip.seatCapacity} boş koltuk
@@ -292,7 +292,7 @@ function TripDetail() {
 
       <Card>
         <h3 className="text-xl font-bold">Sürücü bilgileri</h3>
-        <p className="mt-2 font-semibold">{trip.driver.displayName}</p>
+        <p className="mt-2 font-semibold"><Link className="text-brand underline" to={`/profil/${trip.driver.id}`}>{trip.driver.displayName}</Link></p>
         <p className="mt-2 whitespace-pre-wrap text-muted">{trip.driver.bio || 'Sürücü henüz biyografi eklemedi.'}</p>
 
         {!isDriver && <div className="mt-4">
