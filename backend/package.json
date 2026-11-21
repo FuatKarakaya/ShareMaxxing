@@ -18,7 +18,10 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:seed:mock": "tsx prisma/seed-mock.ts",
     "ledger:check": "tsx scripts/ledger-check.ts",
-    "forum:index": "tsx scripts/index-forum.ts"
+    "forum:index": "tsx scripts/index-forum.ts",
+    "loadtest": "tsx scripts/load-test.ts",
+    "loadtest:seed": "tsx scripts/load-test-data.ts seed",
+    "loadtest:clean": "tsx scripts/load-test-data.ts clean"
   },
   "dependencies": {
     "@prisma/client": "6.19.3",
