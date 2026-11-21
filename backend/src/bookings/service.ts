@@ -48,14 +48,14 @@ type Tx = Prisma.TransactionClient;
 
 // Locks the trip row. Booking, cancelling and expiring all take this lock,
 // so two requests for the same trip never count seats at the same time.
-async function lockTrip(tx: Tx, tripId: string) {
+export async function lockTrip(tx: Tx, tripId: string) {
   const rows = await tx.$queryRaw<{ id: string }[]>`SELECT id FROM trips WHERE id = ${tripId}::uuid FOR UPDATE`;
   if (!rows.length) throw new ApiError(404, 'TRIP_NOT_FOUND', 'Yolculuk bulunamadı.');
   return tx.trip.findUniqueOrThrow({ where: { id: tripId } });
 }
 
 // Unpaid reservations past their deadline give their seat back.
-async function expireStaleReservations(tx: Tx, tripId: string, now: Date) {
+export async function expireStaleReservations(tx: Tx, tripId: string, now: Date) {
   await tx.booking.updateMany({
     where: { tripId, status: 'PENDING_PAYMENT', reservationExpiresAt: { lte: now } },
     data: { status: 'EXPIRED' },
