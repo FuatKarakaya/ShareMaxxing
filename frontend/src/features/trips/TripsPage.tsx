@@ -12,7 +12,8 @@ import { ResourceState } from '../content/ContentControls'
 import { StudentSignIn } from '../content/StudentSignIn'
 import { useAction, useResource } from '../content/hooks'
 import { clearStudentSession, contentRequest, useStudentSession } from '../content/session'
-import { BookSeatAction, MyBookingsList } from '../bookings/BookingScreens'
+import { MyBookingsList } from '../bookings/BookingScreens'
+import { SeatActions } from '../waitlist/WaitlistScreens'
 import { formatDateTime, formatPriceTl } from './format'
 
 type City = { code: number; name: string }
@@ -220,7 +221,7 @@ function TripSearchResults({ path }: { path: string }) {
                   )}
                 </div>
                 <p className="mt-2 text-sm text-muted">
-                  Sürücü: {trip.driver.displayName} · Kalkış: {formatDateTime(trip.departureAt)} · Ücret: {formatPriceTl(trip.priceMinor)}
+                  Sürücü: <Link className="text-brand underline" to={`/profil/${trip.driver.id}`}>{trip.driver.displayName}</Link> · Kalkış: {formatDateTime(trip.departureAt)} · Ücret: {formatPriceTl(trip.priceMinor)}
                 </p>
                 <p className="mt-1 text-sm text-muted">
                   {trip.freeSeats} / {trip.seatCapacity} boş koltuk
@@ -286,19 +287,12 @@ function TripDetail() {
           <ReportButton key={trip.id} targetType="TRIP" targetId={trip.id} label="Yolculuğu bildir" />
         </div>
 
-        {!isDriver && trip.isFull && (
-          <div className="mt-6 space-y-3">
-            <p role="status">Bu yolculuk dolu; koltuk rezervasyonu yapılamaz.</p>
-            <Button disabled>Yolculuk dolu</Button>
-          </div>
-        )}
-
-        {!isDriver && !trip.isFull && trip.status === 'PUBLISHED' && <BookSeatAction tripId={trip.id} />}
+        {!isDriver && trip.status === 'PUBLISHED' && <SeatActions tripId={trip.id} isFull={trip.isFull} />}
       </Card>
 
       <Card>
         <h3 className="text-xl font-bold">Sürücü bilgileri</h3>
-        <p className="mt-2 font-semibold">{trip.driver.displayName}</p>
+        <p className="mt-2 font-semibold"><Link className="text-brand underline" to={`/profil/${trip.driver.id}`}>{trip.driver.displayName}</Link></p>
         <p className="mt-2 whitespace-pre-wrap text-muted">{trip.driver.bio || 'Sürücü henüz biyografi eklemedi.'}</p>
 
         {!isDriver && <div className="mt-4">

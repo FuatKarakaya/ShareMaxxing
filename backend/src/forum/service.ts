@@ -2,8 +2,9 @@ import { Prisma, type User, type ForumPost } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { ApiError } from '../lib/errors';
 import { invalid, object, text, uuid, page } from '../content/validation';
-import { queueHumanReview } from '../content/review';
+import { reviewContent } from '../content/review';
 import { createNotification } from '../notifications/service';
+import { indexInBackground } from './ai-search';
 type Actor = Pick<User, 'id' | 'role'>;
 const include = { author: { select: { id: true, displayName: true } }, category: true };
 const missing = () => new ApiError(404, 'NOT_FOUND', 'Gönderi bulunamadı.');
@@ -51,12 +52,13 @@ export async function questionDetail(actor: Actor, id: string, query: unknown) {
 }
 export async function createQuestion(actor: Actor, value: unknown) {
   const data = input(value, true);
-  return prisma.$transaction(async tx => {
+  const row = await prisma.$transaction(async tx => {
     await category(tx, data.categoryId);
-    const row = await tx.forumPost.create({ data: { authorId: actor.id, kind: 'QUESTION', title: data.title!, body: data.body!, categoryId: data.categoryId! }, include });
-    await queueHumanReview(tx, { targetPostId: row.id });
-    return row;
+    return tx.forumPost.create({ data: { authorId: actor.id, kind: 'QUESTION', title: data.title!, body: data.body!, categoryId: data.categoryId! }, include });
   });
+  reviewContent({ targetPostId: row.id });
+  indexInBackground(row.id);
+  return row;
 }
 export type ReplyEvent = { questionId: string; answerId: string; recipientId: string };
 export type ReplyEmail = (event: ReplyEvent) => Promise<void>;
@@ -69,7 +71,6 @@ export async function createAnswer(actor: Actor, id: string, value: unknown, sen
     if (!parent || !visible(parent, actor)) throw missing();
     if (parent.kind !== 'QUESTION') throw invalid();
     const answer = await tx.forumPost.create({ data: { authorId: actor.id, kind: 'ANSWER', parentPostId: id, body: data.body! }, include });
-    await queueHumanReview(tx, { targetPostId: answer.id });
     const event = parent.authorId === actor.id ? null : { questionId: id, answerId: answer.id, recipientId: parent.authorId };
     if (event) {
       await createNotification(
@@ -85,6 +86,8 @@ export async function createAnswer(actor: Actor, id: string, value: unknown, sen
     }
     return { answer, event };
   });
+  reviewContent({ targetPostId: result.answer.id });
+  indexInBackground(result.answer.id);
   if (result.event) {
     // Delivery is after commit, so provider failure cannot roll back a published answer.
     try {
@@ -96,7 +99,7 @@ export async function createAnswer(actor: Actor, id: string, value: unknown, sen
 }
 export async function changePost(actor: Actor, id: string, value?: unknown, remove = false) {
   uuid(id);
-  return prisma.$transaction(async tx => {
+  const changed = await prisma.$transaction(async tx => {
     const initial = await tx.forumPost.findUnique({ where: { id } });
     if (!initial) throw missing();
     const parentId = initial.parentPostId ?? id;
@@ -107,13 +110,16 @@ export async function changePost(actor: Actor, id: string, value?: unknown, remo
     if (!remove) {
       const data = input(value, row.kind === 'QUESTION', true);
       await category(tx, data.categoryId);
-      const updated = await tx.forumPost.update({ where: { id }, data, include });
-      await queueHumanReview(tx, { targetPostId: id });
-      return updated;
+      return tx.forumPost.update({ where: { id }, data, include });
     }
     const answers = row.kind === 'QUESTION' ? await tx.forumPost.findMany({ where: { parentPostId: id }, select: { id: true } }) : [];
     await tx.moderationCase.updateMany({ where: { targetPostId: { in: [id, ...answers.map(answer => answer.id)] }, status: 'ACTIVE' }, data: { status: 'SOLVED', resolution: 'CONTENT_DELETED', resolvedAt: new Date() } });
     await tx.forumPost.delete({ where: { id } });
     return null;
   });
+  if (changed) {
+    reviewContent({ targetPostId: id });
+    indexInBackground(id);
+  }
+  return changed;
 }

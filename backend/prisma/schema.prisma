@@ -129,6 +129,17 @@ enum PostKind {
   @@map("post_kind")
 }
 
+// Optional waitlist (WBS-8.1). WAITING and OFFERED are live; the rest are history.
+enum WaitlistStatus {
+  WAITING
+  OFFERED
+  BOOKED
+  LEFT
+  EXPIRED
+
+  @@map("waitlist_status")
+}
+
 enum NotificationKind {
   BOOKING
   CANCELLATION
@@ -191,10 +202,13 @@ model User {
   reportsFiled        ModerationCase[]     @relation("CaseReporter")
   casesAsTarget       ModerationCase[]     @relation("CaseTargetUser")
   casesReviewed       ModerationCase[]     @relation("CaseReviewer")
+  waitlistEntries     WaitlistEntry[]
 
   @@map("users")
 }
 
+// UNUSED: payments use a normal iyzico sandbox account with the Checkout Form, not the
+// iyzico marketplace, so drivers are not registered as submerchants. Kept to avoid a migration.
 model DriverSubmerchant {
   userId               String   @id @map("user_id") @db.Uuid
   iyzicoSubmerchantKey String   @unique @map("iyzico_submerchant_key")
@@ -262,6 +276,7 @@ model Trip {
   bookings            Booking[]
   sponsorshipRequests SponsorshipRequest[]
   moderationCases     ModerationCase[]
+  waitlistEntries     WaitlistEntry[]
 
   // trips_search_idx is a partial index (WHERE status = 'PUBLISHED'): raw SQL, migration 2.
   @@index([driverId, departureAt], map: "trips_driver_idx")
@@ -294,6 +309,26 @@ model Booking {
   @@index([tripId, status], map: "bookings_trip_status_idx")
   @@index([passengerId, createdAt(sort: Desc)], map: "bookings_passenger_idx")
   @@map("bookings")
+}
+
+// Optional waitlist of a full trip (WBS-8.1, docs/Waitlist.md).
+// An OFFERED entry holds a freed seat for its user until offer_expires_at.
+model WaitlistEntry {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tripId         String         @map("trip_id") @db.Uuid
+  userId         String         @map("user_id") @db.Uuid
+  status         WaitlistStatus @default(WAITING)
+  offerExpiresAt DateTime?      @map("offer_expires_at") @db.Timestamptz(6)
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user User @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  // one_live_waitlist_entry (partial unique) and the OFFERED check: raw SQL in the same migration.
+  @@index([tripId, status, createdAt], map: "waitlist_queue_idx")
+  @@index([userId], map: "waitlist_user_idx")
+  @@map("waitlist_entries")
 }
 
 // ───────────────── 4.3 Funding requests and payments ─────────────────
@@ -447,11 +482,26 @@ model ForumPost {
   answers         ForumPost[]      @relation("PostAnswers")
   category        ForumCategory?   @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   moderationCases ModerationCase[]
+  embedding       ForumPostEmbedding?
 
   // forum_browse_idx (partial) and forum_keyword_idx (GIN, expression): raw SQL, migration 2.
   @@index([parentPostId, createdAt], map: "forum_answers_idx")
   @@index([authorId], map: "forum_author_idx")
   @@map("forum_posts")
+}
+
+// Optional AI forum search (WBS-23.2, docs/AiForumSearch.md): one embedding
+// vector per post. Deleting the post deletes its vector.
+model ForumPostEmbedding {
+  postId           String   @id @map("post_id") @db.Uuid
+  model            String
+  vector           Float[]
+  contentUpdatedAt DateTime @map("content_updated_at") @db.Timestamptz(6)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  post ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("forum_post_embeddings")
 }
 
 // ───────────────────── 4.7 Notifications ─────────────────────

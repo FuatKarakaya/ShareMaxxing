@@ -8,6 +8,7 @@ import { ResourceState } from '../content/ContentControls'
 import { useAction, useResource } from '../content/hooks'
 import { contentRequest } from '../content/session'
 import { formatDateTime, formatPriceTl } from '../trips/format'
+import { MyWaitlist } from '../waitlist/WaitlistScreens'
 
 type City = { code: number; name: string }
 type BookingStatus = 'PENDING_PAYMENT' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'EXPIRED'
@@ -126,7 +127,7 @@ export function MyBookingsList() {
                   <span className="rounded-lg bg-surface px-3 py-1 text-sm font-semibold">{STATUS_LABELS[booking.status]}</span>
                 </div>
                 <p className="mt-2 text-sm text-muted">
-                  Sürücü: {booking.trip.driver.displayName} · Kalkış: {formatDateTime(booking.trip.departureAt)} · Ücret: {formatPriceTl(booking.priceMinor)}
+                  Sürücü: <Link className="text-brand underline" to={`/profil/${booking.trip.driver.id}`}>{booking.trip.driver.displayName}</Link> · Kalkış: {formatDateTime(booking.trip.departureAt)} · Ücret: {formatPriceTl(booking.priceMinor)}
                 </p>
                 <p className="mt-1 text-sm text-muted">
                   Ödeme: {booking.paymentStatus ? PAYMENT_LABELS[booking.paymentStatus] : 'Ödeme yapılmadı'}
@@ -149,6 +150,7 @@ export function MyBookingsList() {
           </div>
         </>
       )}
+      <MyWaitlist />
     </div>
   )
 }

@@ -113,6 +113,7 @@ test('creates notifications standalone and transactionally, and lists them newes
     isRead: false,
     readAt: null,
   });
+  expect(listRes.body.notifications[0].payload).toBeUndefined();
 });
 
 test('enforces FUNDING privacy checks and validates inputs and query parameters', async () => {
@@ -238,7 +239,6 @@ test('marks individual notifications as read idempotently and enforces recipient
 
   // Bob cannot mark Alice's notification as read, and receives 404.
   await api.post(`/api/notifications/${aliceNotif.id}/read`).auth(bob.token, { type: 'bearer' }).expect(404);
-  await api.patch(`/api/notifications/${aliceNotif.id}/read`).auth(bob.token, { type: 'bearer' }).expect(404);
   await api.post(`/api/notifications/${randomUUID()}/read`).auth(alice.token, { type: 'bearer' }).expect(404);
 
   const firstRead = await api
@@ -251,7 +251,7 @@ test('marks individual notifications as read idempotently and enforces recipient
 
   // Re-marking the already-read notification is idempotent and preserves readAt.
   const secondRead = await api
-    .patch(`/api/notifications/${aliceNotif.id}/read`)
+    .post(`/api/notifications/${aliceNotif.id}/read`)
     .auth(alice.token, { type: 'bearer' })
     .expect(200);
   expect(secondRead.body.notification.readAt).toBe(firstRead.body.notification.readAt);
@@ -283,9 +283,9 @@ test('marks all caller notifications as read without touching other recipients',
     .expect(200);
   expect(aliceCount.body.unreadCount).toBe(0);
 
-  // Repeating read-all via PATCH reports 0 updated rows.
+  // Repeating read-all reports 0 updated rows.
   const repeatRes = await api
-    .patch('/api/notifications/read-all')
+    .post('/api/notifications/read-all')
     .auth(alice.token, { type: 'bearer' })
     .expect(200);
   expect(repeatRes.body).toEqual({ updatedCount: 0, unreadCount: 0 });

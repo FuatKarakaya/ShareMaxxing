@@ -156,7 +156,6 @@ function toNotificationResponse(row: Notification) {
     kind: row.kind,
     text,
     link,
-    payload: row.payload,
     isRead: row.readAt !== null,
     readAt: row.readAt,
     createdAt: row.createdAt,
@@ -228,6 +227,7 @@ export async function markNotificationRead(recipientId: string, rawNotificationI
   }
 
   if (existing.readAt === null) {
+    // Conditional updateMany with readAt: null prevents concurrent requests from overwriting an existing readAt timestamp; we then re-read the row and unread count.
     await prisma.notification.updateMany({
       where: { id: notificationId, recipientId, readAt: null },
       data: { readAt: new Date() },

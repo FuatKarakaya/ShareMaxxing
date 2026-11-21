@@ -2,7 +2,7 @@ import { Prisma, type User, type HousingListing } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { ApiError } from '../lib/errors';
 import { invalid, object, text, uuid, page } from '../content/validation';
-import { queueHumanReview } from '../content/review';
+import { reviewContent } from '../content/review';
 type Actor = Pick<User, 'id' | 'role'>;
 const author = { select: { id: true, displayName: true } };
 const include = { author, district: true };
@@ -52,29 +52,29 @@ export async function getHousing(actor: Actor, id: string) {
 }
 export async function createHousing(actor: Actor, value: unknown) {
   const data = input(value);
-  return prisma.$transaction(async tx => {
+  const row = await prisma.$transaction(async tx => {
     await district(tx, data.districtId);
-    const row = await tx.housingListing.create({ data: { authorId: actor.id, districtId: data.districtId!, listingType: data.listingType!, title: data.title!, description: data.description!, contactDetails: data.contactDetails }, include });
-    await queueHumanReview(tx, { targetHousingId: row.id });
-    return row;
+    return tx.housingListing.create({ data: { authorId: actor.id, districtId: data.districtId!, listingType: data.listingType!, title: data.title!, description: data.description!, contactDetails: data.contactDetails }, include });
   });
+  reviewContent({ targetHousingId: row.id });
+  return row;
 }
 export async function changeHousing(actor: Actor, id: string, value?: unknown, remove = false) {
   uuid(id);
   const data = remove ? undefined : input(value, true);
-  return prisma.$transaction(async tx => {
+  const changed = await prisma.$transaction(async tx => {
     await tx.$queryRaw`SELECT id FROM housing_listings WHERE id = ${id}::uuid FOR UPDATE`;
     const row = await tx.housingListing.findUnique({ where: { id } });
     if (!row) throw missing();
     if (row.authorId !== actor.id) throw new ApiError(403, 'FORBIDDEN', 'Yalnızca kendi ilanınızı değiştirebilirsiniz.');
     if (data) {
       await district(tx, data.districtId);
-      const updated = await tx.housingListing.update({ where: { id }, data, include });
-      await queueHumanReview(tx, { targetHousingId: id });
-      return updated;
+      return tx.housingListing.update({ where: { id }, data, include });
     }
     await tx.moderationCase.updateMany({ where: { targetHousingId: id, status: 'ACTIVE' }, data: { status: 'SOLVED', resolution: 'CONTENT_DELETED', resolvedAt: new Date() } });
     await tx.housingListing.delete({ where: { id } });
     return null;
   });
+  if (changed) reviewContent({ targetHousingId: id });
+  return changed;
 }

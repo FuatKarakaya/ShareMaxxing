@@ -12,6 +12,7 @@ import { StudentSignIn } from '../content/StudentSignIn'
 import { clearStudentSession, contentRequest, useStudentSession } from '../content/session'
 import { useAction, useResource } from '../content/hooks'
 import { DeleteAction, Pagination, ResourceState } from '../content/ContentControls'
+import { AiSearchBox } from './AiSearchBox'
 type Category = { id: string; code: string; labelTr: string }
 type Post = { id: string; authorId: string; title: string | null; body: string; hiddenAt: string | null; createdAt: string; author: { id: string; displayName: string }; category: Category | null }
 type Detail = { question: Post; answers: Post[]; page: number; hasMore: boolean }
@@ -35,11 +36,12 @@ function QuestionList() {
   const query = new URLSearchParams({ page: String(current), ...(keyword ? { q: keyword } : {}), ...(category ? { categoryId: category } : {}) })
   const list = useResource<{ questions: Post[]; page: number; hasMore: boolean }>(`/forum/questions${mine ? '/mine' : ''}?${query}`)
   return <div className="space-y-5">
+    <AiSearchBox onKeywordSearch={q => setParams({ ...(category ? { categoryId: category } : {}), ...(mine ? { mine: '1' } : {}), ...(q ? { q } : {}) })} />
     <SearchForm key={keyword} keyword={keyword} search={q => setParams({ ...(category ? { categoryId: category } : {}), ...(mine ? { mine: '1' } : {}), ...(q ? { q } : {}) })} />
     <div className="grid gap-4 sm:grid-cols-2"><Select label="Kategori" value={category} onChange={e => setParams({ ...(keyword ? { q: keyword } : {}), ...(mine ? { mine: '1' } : {}), ...(e.target.value ? { categoryId: e.target.value } : {}) })}><option value="">Tüm kategoriler</option>{categories.data?.categories.map(c => <option key={c.id} value={c.id}>{c.labelTr}</option>)}</Select>
     <label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={mine} onChange={e => setParams({ ...(keyword ? { q: keyword } : {}), ...(category ? { categoryId: category } : {}), ...(e.target.checked ? { mine: '1' } : {}) })} />Yalnızca sorularım</label></div>
     <ResourceState {...categories} /><ResourceState {...list} />
-    {list.data && <>{!list.data.questions.length && <p role="status">Bu filtrelerde henüz soru yok.</p>}<div className="grid gap-4">{list.data.questions.map(q => <Card key={q.id}><h2 className="text-xl font-bold"><Link className="text-brand underline" to={`/forum/${q.id}`}>{q.title}</Link></h2><p className="mt-2 text-sm text-muted">{q.category?.labelTr} · {q.author.displayName} · {date(q.createdAt)}</p>{q.hiddenAt && <p>Bu gönderi moderasyon nedeniyle gizli.</p>}<p className="mt-3 whitespace-pre-wrap">{q.body.slice(0, 240)}{q.body.length > 240 ? '…' : ''}</p></Card>)}</div><Pagination page={list.data.page} hasMore={list.data.hasMore} change={page => setParams({ ...(keyword ? { q: keyword } : {}), ...(category ? { categoryId: category } : {}), ...(mine ? { mine: '1' } : {}), page: String(page) })} /></>}
+    {list.data && <>{!list.data.questions.length && <p role="status">Bu filtrelerde henüz soru yok.</p>}<div className="grid gap-4">{list.data.questions.map(q => <Card key={q.id}><h2 className="text-xl font-bold"><Link className="text-brand underline" to={`/forum/${q.id}`}>{q.title}</Link></h2><p className="mt-2 text-sm text-muted">{q.category?.labelTr} · <Link className="text-brand underline" to={`/profil/${q.author.id}`}>{q.author.displayName}</Link> · {date(q.createdAt)}</p>{q.hiddenAt && <p>Bu gönderi moderasyon nedeniyle gizli.</p>}<p className="mt-3 whitespace-pre-wrap">{q.body.slice(0, 240)}{q.body.length > 240 ? '…' : ''}</p></Card>)}</div><Pagination page={list.data.page} hasMore={list.data.hasMore} change={page => setParams({ ...(keyword ? { q: keyword } : {}), ...(category ? { categoryId: category } : {}), ...(mine ? { mine: '1' } : {}), page: String(page) })} /></>}
   </div>
 }
 function SearchForm({ keyword, search }: { keyword: string; search: (q: string) => void }) {
@@ -59,7 +61,7 @@ function QuestionDetail() {
   const [body, setBody] = useState('')
   if (!detail.data) return <ResourceState {...detail} />
   const q = detail.data.question
-  return <div className="space-y-6"><Card><h2 className="text-2xl font-bold">{q.title}</h2><p className="my-3 text-sm text-muted">{q.category?.labelTr} · {q.author.displayName} · {date(q.createdAt)}</p>{q.hiddenAt && <Alert variant="info" title="Gönderi gizli" />}<p className="whitespace-pre-wrap">{q.body}</p>
+  return <div className="space-y-6"><Card><h2 className="text-2xl font-bold">{q.title}</h2><p className="my-3 text-sm text-muted">{q.category?.labelTr} · <Link className="text-brand underline" to={`/profil/${q.author.id}`}>{q.author.displayName}</Link> · {date(q.createdAt)}</p>{q.hiddenAt && <Alert variant="info" title="Gönderi gizli" />}<p className="whitespace-pre-wrap">{q.body}</p>
     {q.authorId === session?.user.id && <div className="mt-5 flex flex-wrap items-start gap-3"><LinkButton to={`/forum/${q.id}/duzenle`} variant="secondary">Soruyu düzenle</LinkButton><DeleteAction onDelete={async () => { await contentRequest(`/forum/posts/${q.id}`, { method: 'DELETE' }); navigate('/forum') }}>Soruyu sil</DeleteAction></div>}
     {!q.hiddenAt && <div className="mt-4 space-y-2">
       <ReportButton key={q.id} targetType="POST" targetId={q.id} label="Soruyu bildir" />
@@ -78,7 +80,7 @@ function Answer({ post, own, reload }: { post: Post; own: boolean; reload: () =>
   const [editing, setEditing] = useState(false)
   const [body, setBody] = useState(post.body)
   const action = useAction()
-  return <article aria-label={`${post.author.displayName} yanıtı`}><Card><p className="mb-3 text-sm text-muted">{post.author.displayName} · {date(post.createdAt)}</p>{post.hiddenAt && <p>Bu yanıt moderasyon nedeniyle gizli.</p>}
+  return <article aria-label={`${post.author.displayName} yanıtı`}><Card><p className="mb-3 text-sm text-muted"><Link className="text-brand underline" to={`/profil/${post.author.id}`}>{post.author.displayName}</Link> · {date(post.createdAt)}</p>{post.hiddenAt && <p>Bu yanıt moderasyon nedeniyle gizli.</p>}
     {editing ? <Form onSubmit={e => { e.preventDefault(); void action.run(async () => { await contentRequest(`/forum/posts/${post.id}`, { method: 'PATCH', body: JSON.stringify({ body }) }); setEditing(false); reload() }) }}><Textarea label="Yanıtı düzenle" value={body} onChange={e => setBody(e.target.value)} required maxLength={6000} /><div className="flex gap-3"><Button type="submit" loading={action.busy}>Kaydet</Button><Button variant="secondary" onClick={() => { setEditing(false); setBody(post.body) }}>Vazgeç</Button></div></Form> : <p className="whitespace-pre-wrap">{post.body}</p>}
     {own && !editing && <div className="mt-4 flex flex-wrap items-start gap-3"><Button variant="secondary" onClick={() => setEditing(true)}>Yanıtı düzenle</Button><DeleteAction onDelete={async () => { await contentRequest(`/forum/posts/${post.id}`, { method: 'DELETE' }); reload() }}>Yanıtı sil</DeleteAction></div>}{action.error && <Alert variant="error" title="Yanıt kaydedilemedi">{action.error}</Alert>}
     {!post.hiddenAt && !editing && <div className="mt-4 space-y-2">

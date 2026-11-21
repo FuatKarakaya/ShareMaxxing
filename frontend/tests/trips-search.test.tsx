@@ -111,6 +111,9 @@ beforeEach(async () => {
       if (JSON.parse(String(init?.body)).targetId !== 'trip-open') return json({}, 400)
       return json({ report: { id: 'report-1', status: 'ACTIVE' } }, 201)
     }
+    if (url.pathname === '/api/waitlist' && method === 'GET') {
+      return json({ entries: [] })
+    }
     if (url.pathname === '/api/cities') {
       return json({ cities })
     }
@@ -220,8 +223,10 @@ test('marks a full trip as unbookable on detail view and handles missing optiona
   }
   open('/yolculuklar/trip-full')
 
-  await screen.findByText('Bu yolculuk dolu; koltuk rezervasyonu yapılamaz.')
-  expect(screen.getByRole('button', { name: 'Yolculuk dolu' })).toBeDisabled()
+  // A full trip offers the waitlist (WBS-8.2) instead of booking.
+  await screen.findByText(/Bu yolculuk dolu\./)
+  expect(screen.getByRole('button', { name: 'Bekleme listesine katıl' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Rezervasyon yap' })).not.toBeInTheDocument()
   expect(screen.getByText('Sürücü iletişim bilgisi paylaşmadı.')).toBeInTheDocument()
   expect(screen.getByText('Henüz görünür değerlendirme yok.')).toBeInTheDocument()
 })

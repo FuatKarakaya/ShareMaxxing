@@ -38,23 +38,7 @@ export function createNotificationRouter(): Router {
     }
   });
 
-  router.patch('/read-all', async (_req, res, next) => {
-    try {
-      res.json(await markAllNotificationsRead(res.locals.user.id));
-    } catch (error) {
-      next(error);
-    }
-  });
-
   router.post('/:id/read', async (req, res, next) => {
-    try {
-      res.json(await markNotificationRead(res.locals.user.id, req.params.id));
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  router.patch('/:id/read', async (req, res, next) => {
     try {
       res.json(await markNotificationRead(res.locals.user.id, req.params.id));
     } catch (error) {

@@ -1,6 +1,6 @@
 # Notification service and API — WBS-22.1
 
-Implemented: shared in-app notification creation service (`createNotification`) and recipient endpoints (`GET /api/notifications/unread-count`, `GET /api/notifications`, `POST`/`PATCH /api/notifications/:id/read`, `POST`/`PATCH /api/notifications/read-all`).
+Implemented: shared in-app notification creation service (`createNotification`) and recipient endpoints (`GET /api/notifications/unread-count`, `GET /api/notifications`, `POST /api/notifications/:id/read`, `POST /api/notifications/read-all`).
 
 Not in this part: connecting booking, cancellation, ride-end reminder, payment, and funding event producers (`WBS-22.2`, except `FORUM_REPLY` which already uses `createNotification`) and the frontend notification bell (`WBS-22.3`).
 
@@ -15,17 +15,19 @@ await createNotification(
     kind: 'BOOKING', // BOOKING | CANCELLATION | RIDE_REMINDER | PAYMENT | FUNDING | FORUM_REPLY | MODERATION
     text: 'Yolculuğunuz için yeni bir rezervasyon var.',
     link: `/yolculuklar/${tripId}`, // optional internal path starting with '/'
-    metadata: { bookingId }, // optional primitive metadata
+    metadata: { bookingId }, // optional primitive metadata (stored internally, not exposed on HTTP responses)
   },
   tx, // optional Prisma transaction client so notification commits atomically with the business event
 );
 ```
 
 ### Validation & privacy rules (`databaseplan.md` §4.7 & §5.G)
-- `recipientId` must be a valid UUID and `kind` one of the 7 `NotificationKind` values.
+- `recipientId` must be a valid UUID; because `createNotification` is an internal helper, it relies on the database foreign key (`notifications_recipient_id_fkey`) to reject non-existent user IDs.
+- `kind` must be one of the 7 `NotificationKind` values.
 - `text` must be 1..500 characters (trimmed).
 - `link` (optional) must be an internal path starting with `/` (and not `//`), max 250 characters.
 - For `kind: 'FUNDING'`, `metadata` is checked to block donor/recipient/driver/trip/route identifiers (`donorId`, `payerId`, `recipientId`, `driverId`, `tripId`, `originCity`, `destinationCity`, `originCityCode`, `destinationCityCode`, `email`, `displayName`), keeping askıda bilet notifications anonymous.
+- Raw `payload` objects stored in the database are never returned on HTTP endpoints (`databaseplan.md` §5.G); only display-safe `text` and `link` fields are serialized.
 
 ## HTTP endpoints
 
@@ -33,8 +35,8 @@ await createNotification(
 |---|---|---|
 | `GET /api/notifications/unread-count` | Returns caller's unread notification count | `200 { unreadCount }` |
 | `GET /api/notifications?page=1&unreadOnly=true` | Lists caller's notifications (20/page, newest first); optional `page` (`1..9999`) and `unreadOnly` (`true`/`false`) | `200 { notifications, unreadCount, page, hasMore }` |
-| `POST` / `PATCH /api/notifications/:id/read` | Marks one of the caller's notifications as read (idempotent) | `200 { notification, unreadCount }` |
-| `POST` / `PATCH /api/notifications/read-all` | Marks all unread notifications of the caller as read | `200 { updatedCount, unreadCount: 0 }` |
+| `POST /api/notifications/:id/read` | Marks one of the caller's notifications as read (idempotent) | `200 { notification, unreadCount }` |
+| `POST /api/notifications/read-all` | Marks all unread notifications of the caller as read | `200 { updatedCount, unreadCount: 0 }` |
 
 ### Notification response shape
 
@@ -45,12 +47,6 @@ await createNotification(
   "kind": "FORUM_REPLY",
   "text": "Sorunuza yeni bir yanıt geldi.",
   "link": "/forum/...",
-  "payload": {
-    "questionId": "...",
-    "answerId": "...",
-    "link": "/forum/...",
-    "text": "Sorunuza yeni bir yanıt geldi."
-  },
   "isRead": false,
   "readAt": null,
   "createdAt": "2026-11-16T18:00:00.000Z"

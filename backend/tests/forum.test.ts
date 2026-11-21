@@ -4,6 +4,7 @@ import { createApp } from '../src/app';
 import { prisma } from '../src/lib/prisma';
 import { issueAccessToken } from '../src/lib/tokens';
 import { createAnswer } from '../src/forum/service';
+import { reviewsSettled } from '../src/content/review';
 const url = process.env.TEST_DATABASE_URL;
 if (!url || process.env.DATABASE_URL !== url || !new URL(url).pathname.endsWith('_test')) throw new Error('Use npm test.');
 const prefix = `forum-${randomUUID()}`;
@@ -19,6 +20,7 @@ beforeAll(async () => {
   owner = await user(); other = await user(); categoryId = (await prisma.forumCategory.findFirstOrThrow()).id;
 });
 afterAll(async () => {
+  await reviewsSettled();
   await prisma.moderationCase.deleteMany({ where: { OR: [{ targetPost: { author: { email: { startsWith: prefix } } } }, { reason: prefix }] } });
   await prisma.notification.deleteMany({ where: { recipient: { email: { startsWith: prefix } } } });
   await prisma.forumPost.deleteMany({ where: { author: { email: { startsWith: prefix } } } });
@@ -77,6 +79,7 @@ test('only author may edit/delete, including when a different caller is admin', 
   await prisma.user.update({ where: { id: other.id }, data: { role: 'USER' } });
   await api.patch(`/api/forum/posts/${q.id}`).auth(owner.token, { type: 'bearer' }).send({ title: 'Yeni başlık', body: 'Düzenlendi' }).expect(200);
   await api.patch(`/api/forum/posts/${q.id}`).auth(owner.token, { type: 'bearer' }).send({}).expect(400);
+  await reviewsSettled();
   expect(await prisma.moderationCase.count({ where: { targetPostId: q.id, status: 'ACTIVE' } })).toBe(1);
 });
 test('hidden questions/answers are omitted for other students but accessible to their author or staff', async () => {
@@ -94,6 +97,7 @@ test('hidden questions/answers are omitted for other students but accessible to 
 test('deleting a question cascades answers and solves all their active cases', async () => {
   const q = (await post().expect(201)).body.question;
   const a = await createAnswer(owner, q.id, { body: 'Yanıt' });
+  await reviewsSettled();
   await prisma.moderationCase.updateMany({ where: { targetPostId: { in: [q.id, a.id] } }, data: { reason: prefix } });
   await api.delete(`/api/forum/posts/${q.id}`).auth(owner.token, { type: 'bearer' }).expect(204);
   expect(await prisma.forumPost.count({ where: { id: { in: [q.id, a.id] } } })).toBe(0);
