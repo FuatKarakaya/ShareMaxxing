@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { sections } from '../../config/navigation'
+import { NotificationBell } from '../../features/notifications/NotificationBell'
 import { Button } from '../ui/Button'
 
 export function Navigation() {
@@ -42,6 +43,9 @@ export function Navigation() {
                 </NavLink>
               </li>
             ))}
+            <li>
+              <NotificationBell onNavigate={closeMenu} />
+            </li>
           </ul>
         </nav>
       </div>
