@@ -12,6 +12,7 @@ import { allowOrigin } from './lib/cors';
 import { errorHandler } from './lib/errors';
 import { createCitiesRouter, createTripRouter } from './trips/router';
 import { createWaitlistRouter } from './waitlist/router';
+import { createNotificationRouter } from './notifications/router';
 
 export function createApp(sendVerificationCode?: SendVerificationCode, paymentProvider?: PaymentProvider) {
   const app = express();
@@ -37,6 +38,7 @@ export function createApp(sendVerificationCode?: SendVerificationCode, paymentPr
   app.use('/api/trips', createTripRouter());
   app.use('/api/housing', createHousingRouter());
   app.use('/api/waitlist', createWaitlistRouter());
+  app.use('/api/notifications', createNotificationRouter());
   app.use((_req, res) => {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Adres bulunamadı.' } });
   });
