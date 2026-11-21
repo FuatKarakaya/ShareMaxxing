@@ -7,6 +7,9 @@ const listeners = new Set<() => void>()
 function subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener) } }
 function publish(value: Session) { session = value; listeners.forEach(listener => listener()) }
 export function clearStudentSession() { publish(null) }
+export function updateStudentName(id: string, displayName: string) {
+  if (session?.user.id === id) publish({ ...session, user: { ...session.user, displayName } })
+}
 export function useStudentSession() { return useSyncExternalStore(subscribe, () => session, () => null) }
 export async function signIn(email: string, password: string) {
   const result = await apiRequest<{ accessToken: string; user: Student }>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) })
